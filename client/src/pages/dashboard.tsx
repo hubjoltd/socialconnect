@@ -872,12 +872,356 @@ export default function Dashboard() {
       case "contacts":
         return (
           <main className="p-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-6">Contacts</h1>
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-gray-500">Contact management coming soon...</p>
-              </CardContent>
-            </Card>
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-3xl font-bold text-gray-900">Contacts</h1>
+              <div className="flex items-center space-x-3">
+                <Button variant="outline" size="sm">
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Import
+                </Button>
+                <Button className="bg-brand-blue text-white hover:bg-brand-blue-dark">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Contact
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid lg:grid-cols-12 gap-6">
+              {/* Left Sidebar - Contact Sync & Invites */}
+              <div className="lg:col-span-4 space-y-6">
+                {/* Contact Sync Panel */}
+                <Card>
+                  <CardContent className="p-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Sync Contacts</h3>
+                    <div className="space-y-3">
+                      {/* Google Contacts */}
+                      <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                            <svg className="w-4 h-4 text-red-600" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900 text-sm">Google Contacts</p>
+                            <p className="text-xs text-gray-500">
+                              {connectedCalendars.google ? "Synced • 156 contacts" : "Not connected"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          {connectedCalendars.google ? (
+                            <>
+                              <Button
+                                onClick={() => {
+                                  toast({
+                                    title: "Contacts Synced",
+                                    description: "Successfully synced with Google Contacts",
+                                  });
+                                }}
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                              >
+                                <RefreshCw className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                onClick={() => {
+                                  setConnectedCalendars(prev => ({ ...prev, google: false }));
+                                  toast({
+                                    title: "Contacts Disconnected",
+                                    description: "Disconnected Google Contacts",
+                                  });
+                                }}
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs px-2 h-8"
+                              >
+                                Disconnect
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              onClick={() => {
+                                window.open(
+                                  `https://accounts.google.com/oauth/authorize?client_id=YOUR_CLIENT_ID&redirect_uri=${window.location.origin}/api/auth/google/contacts&scope=https://www.googleapis.com/auth/contacts.readonly&response_type=code&access_type=offline`,
+                                  '_blank',
+                                  'width=500,height=600'
+                                );
+                                setTimeout(() => {
+                                  setConnectedCalendars(prev => ({ ...prev, google: true }));
+                                  toast({
+                                    title: "Google Contacts Connected",
+                                    description: "Successfully connected to Google Contacts",
+                                  });
+                                }, 2000);
+                              }}
+                              className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 h-8"
+                            >
+                              Connect
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Microsoft Contacts */}
+                      <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <svg className="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M0 0v11.408h11.408V0H0zm12.594 0v11.408H24V0H12.594zM0 12.594V24h11.408V12.594H0zm12.594 0V24H24V12.594H12.594z"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900 text-sm">Outlook Contacts</p>
+                            <p className="text-xs text-gray-500">
+                              {connectedCalendars.microsoft ? "Synced • 89 contacts" : "Not connected"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          {connectedCalendars.microsoft ? (
+                            <>
+                              <Button
+                                onClick={() => {
+                                  toast({
+                                    title: "Contacts Synced",
+                                    description: "Successfully synced with Outlook Contacts",
+                                  });
+                                }}
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                              >
+                                <RefreshCw className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                onClick={() => {
+                                  setConnectedCalendars(prev => ({ ...prev, microsoft: false }));
+                                  toast({
+                                    title: "Contacts Disconnected",
+                                    description: "Disconnected Outlook Contacts",
+                                  });
+                                }}
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs px-2 h-8"
+                              >
+                                Disconnect
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              onClick={() => {
+                                window.open(
+                                  `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=${window.location.origin}/api/auth/microsoft/contacts&scope=https://graph.microsoft.com/contacts.read&response_mode=query`,
+                                  '_blank',
+                                  'width=500,height=600'
+                                );
+                                setTimeout(() => {
+                                  setConnectedCalendars(prev => ({ ...prev, microsoft: true }));
+                                  toast({
+                                    title: "Outlook Contacts Connected",
+                                    description: "Successfully connected to Outlook Contacts",
+                                  });
+                                }, 2000);
+                              }}
+                              className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 h-8"
+                            >
+                              Connect
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Invite Panel */}
+                <Card>
+                  <CardContent className="p-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Invite Contacts</h3>
+                    <div className="space-y-3">
+                      <div className="p-3 border border-gray-200 rounded-lg">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                            <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
+                              <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900 text-sm">Email Invitation</p>
+                            <p className="text-xs text-gray-500">Send meeting invites via email</p>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <input
+                            type="email"
+                            placeholder="Enter email address"
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                          />
+                          <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white">
+                            Send Invite
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="p-3 border border-gray-200 rounded-lg">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                            <svg className="w-4 h-4 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900 text-sm">Share Meeting Link</p>
+                            <p className="text-xs text-gray-500">Copy link to share instantly</p>
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          <input
+                            type="text"
+                            value="https://meet.app/join/abc123"
+                            readOnly
+                            className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-50"
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              navigator.clipboard.writeText("https://meet.app/join/abc123");
+                              toast({
+                                title: "Link Copied",
+                                description: "Meeting link copied to clipboard",
+                              });
+                            }}
+                          >
+                            Copy
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Quick Stats */}
+                <Card>
+                  <CardContent className="p-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Stats</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Total Contacts</span>
+                        <span className="font-medium text-gray-900">245</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Synced from Google</span>
+                        <span className="font-medium text-gray-900">156</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Synced from Outlook</span>
+                        <span className="font-medium text-gray-900">89</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Recent Activity</span>
+                        <span className="font-medium text-green-600">12 this week</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Right Side - Contacts List */}
+              <div className="lg:col-span-8">
+                <Card>
+                  <CardContent className="p-6">
+                    {/* Search and Filter */}
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center space-x-4 flex-1">
+                        <div className="relative flex-1 max-w-md">
+                          <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                          <input
+                            type="text"
+                            placeholder="Search contacts..."
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                          />
+                        </div>
+                        <select className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-blue">
+                          <option>All Sources</option>
+                          <option>Google Contacts</option>
+                          <option>Outlook Contacts</option>
+                          <option>Manual Contacts</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Contacts Grid */}
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {/* Sample Contacts */}
+                      {[
+                        { name: "John Doe", email: "john.doe@company.com", source: "google", avatar: "JD", status: "online" },
+                        { name: "Jane Smith", email: "jane.smith@company.com", source: "microsoft", avatar: "JS", status: "offline" },
+                        { name: "Alice Johnson", email: "alice.j@company.com", source: "google", avatar: "AJ", status: "online" },
+                        { name: "Bob Wilson", email: "bob.wilson@company.com", source: "microsoft", avatar: "BW", status: "busy" },
+                        { name: "Carol Brown", email: "carol.brown@company.com", source: "google", avatar: "CB", status: "online" },
+                        { name: "David Lee", email: "david.lee@company.com", source: "manual", avatar: "DL", status: "offline" },
+                        { name: "Emma Davis", email: "emma.davis@company.com", source: "google", avatar: "ED", status: "online" },
+                        { name: "Frank Miller", email: "frank.miller@company.com", source: "microsoft", avatar: "FM", status: "busy" },
+                        { name: "Grace Taylor", email: "grace.taylor@company.com", source: "google", avatar: "GT", status: "online" }
+                      ].map((contact, index) => (
+                        <div key={index} className="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
+                          <div className="flex items-center space-x-3 mb-3">
+                            <div className="relative">
+                              <div className="w-10 h-10 bg-brand-blue rounded-full flex items-center justify-center text-white font-medium text-sm">
+                                {contact.avatar}
+                              </div>
+                              <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${
+                                contact.status === 'online' ? 'bg-green-500' :
+                                contact.status === 'busy' ? 'bg-red-500' : 'bg-gray-400'
+                              }`}></div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-gray-900 truncate">{contact.name}</h4>
+                              <p className="text-sm text-gray-500 truncate">{contact.email}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <Badge variant="outline" className="text-xs">
+                              {contact.source === 'google' ? 'Google' : 
+                               contact.source === 'microsoft' ? 'Outlook' : 'Manual'}
+                            </Badge>
+                            <div className="flex items-center space-x-1">
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <Video className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MessageSquare className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Load More */}
+                    <div className="text-center mt-6">
+                      <Button variant="outline">
+                        Load More Contacts
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </main>
         );
       case "team-chat":
