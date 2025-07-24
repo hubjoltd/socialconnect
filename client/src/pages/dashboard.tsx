@@ -55,6 +55,7 @@ export default function Dashboard() {
   const [activeSection, setActiveSection] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarView, setCalendarView] = useState<"month" | "week" | "day">("month");
   const [connectedCalendars, setConnectedCalendars] = useState({
     google: false,
@@ -665,19 +666,43 @@ export default function Dashboard() {
                         const day = date.getDate();
                         const isCurrentMonth = date.getMonth() === currentDate.getMonth();
                         const isToday = new Date().toDateString() === date.toDateString();
+                        const isSelected = selectedDate.toDateString() === date.toDateString();
+                        
+                        // Check if this date has events
+                        const dateString = date.toISOString().split('T')[0];
+                        const mockEvents = [
+                          { id: 1, title: "Team Standup", time: "9:00 AM - 9:30 AM", date: "2025-01-24", type: "meeting", attendees: ["John Doe", "Jane Smith"], source: "google" },
+                          { id: 2, title: "Client Review", time: "2:00 PM - 3:00 PM", date: "2025-01-24", type: "meeting", attendees: ["Alice Johnson", "Bob Wilson"], source: "microsoft" },
+                          { id: 3, title: "Project Planning", time: "10:30 AM - 11:30 AM", date: "2025-01-25", type: "meeting", attendees: ["Team Lead", "Product Manager"], source: "google" },
+                          { id: 4, title: "Design Review", time: "3:00 PM - 4:00 PM", date: "2025-01-25", type: "meeting", attendees: ["UI Designer", "Developer"], source: "microsoft" },
+                          { id: 5, title: "Weekly Sync", time: "11:00 AM - 12:00 PM", date: "2025-01-26", type: "meeting", attendees: ["Dev Team"], source: "google" },
+                          { id: 6, title: "Product Demo", time: "2:30 PM - 3:30 PM", date: "2025-01-27", type: "meeting", attendees: ["Stakeholders"], source: "microsoft" },
+                          { id: 7, title: "1:1 Meeting", time: "4:00 PM - 4:30 PM", date: "2025-01-28", type: "meeting", attendees: ["Manager"], source: "google" }
+                        ];
+                        const hasEvents = mockEvents.some(event => event.date === dateString);
                         
                         return (
                           <div
                             key={i}
-                            className={`aspect-square flex items-center justify-center text-sm cursor-pointer rounded ${
+                            onClick={() => {
+                              if (isCurrentMonth) {
+                                setSelectedDate(date);
+                              }
+                            }}
+                            className={`aspect-square flex items-center justify-center text-sm cursor-pointer rounded relative ${
                               isCurrentMonth
-                                ? isToday
+                                ? isSelected
                                   ? 'bg-brand-blue text-white font-medium'
+                                  : isToday
+                                  ? 'bg-blue-100 text-brand-blue font-medium'
                                   : 'text-gray-700 hover:bg-gray-100'
                                 : 'text-gray-300'
                             }`}
                           >
                             {day}
+                            {hasEvents && isCurrentMonth && !isSelected && (
+                              <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-brand-blue rounded-full"></div>
+                            )}
                           </div>
                         );
                       })}
@@ -688,112 +713,136 @@ export default function Dashboard() {
 
               {/* Right Side - Events List */}
               <div className="lg:col-span-8 space-y-6">
-                {/* Today's Events */}
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900">Today's Events</h3>
-                      <span className="text-sm text-gray-500">
-                        {new Date().toLocaleDateString('en-US', { 
-                          weekday: 'long', 
-                          year: 'numeric', 
-                          month: 'long', 
-                          day: 'numeric' 
-                        })}
-                      </span>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      {/* Sample Today's Events */}
-                      <div className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
-                        <div className="w-3 h-12 rounded-full bg-red-500"></div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-gray-900">Team Standup</h4>
-                            <div className="flex items-center space-x-2">
-                              <Badge variant="outline" className="text-xs">Google</Badge>
-                              <Button variant="ghost" size="sm" className="h-8">
-                                <Video className="w-4 h-4 mr-1" />
-                                Join
-                              </Button>
-                            </div>
-                          </div>
-                          <p className="text-sm text-gray-600 mt-1">9:00 AM - 9:30 AM</p>
-                          <div className="flex items-center mt-2">
-                            <Users className="w-4 h-4 text-gray-400 mr-1" />
-                            <span className="text-xs text-gray-500">John Doe, Jane Smith</span>
-                          </div>
-                        </div>
-                      </div>
+                {(() => {
+                  // Define all events
+                  const allEvents = [
+                    { id: 1, title: "Team Standup", time: "9:00 AM - 9:30 AM", date: "2025-01-24", type: "meeting", attendees: ["John Doe", "Jane Smith"], source: "google" },
+                    { id: 2, title: "Client Review", time: "2:00 PM - 3:00 PM", date: "2025-01-24", type: "meeting", attendees: ["Alice Johnson", "Bob Wilson"], source: "microsoft" },
+                    { id: 3, title: "Project Planning", time: "10:30 AM - 11:30 AM", date: "2025-01-25", type: "meeting", attendees: ["Team Lead", "Product Manager"], source: "google" },
+                    { id: 4, title: "Design Review", time: "3:00 PM - 4:00 PM", date: "2025-01-25", type: "meeting", attendees: ["UI Designer", "Developer"], source: "microsoft" },
+                    { id: 5, title: "Weekly Sync", time: "11:00 AM - 12:00 PM", date: "2025-01-26", type: "meeting", attendees: ["Dev Team"], source: "google" },
+                    { id: 6, title: "Product Demo", time: "2:30 PM - 3:30 PM", date: "2025-01-27", type: "meeting", attendees: ["Stakeholders"], source: "microsoft" },
+                    { id: 7, title: "1:1 Meeting", time: "4:00 PM - 4:30 PM", date: "2025-01-28", type: "meeting", attendees: ["Manager"], source: "google" },
+                    { id: 8, title: "Code Review", time: "1:00 PM - 2:00 PM", date: "2025-01-29", type: "meeting", attendees: ["Senior Dev", "Junior Dev"], source: "microsoft" },
+                    { id: 9, title: "Sprint Planning", time: "9:30 AM - 11:00 AM", date: "2025-01-30", type: "meeting", attendees: ["Scrum Team"], source: "google" }
+                  ];
 
-                      <div className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
-                        <div className="w-3 h-12 rounded-full bg-blue-500"></div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-gray-900">Client Review</h4>
-                            <div className="flex items-center space-x-2">
-                              <Badge variant="outline" className="text-xs">Outlook</Badge>
-                              <Button variant="ghost" size="sm" className="h-8">
-                                <Video className="w-4 h-4 mr-1" />
-                                Join
-                              </Button>
-                            </div>
+                  // Get events for selected date
+                  const selectedDateString = selectedDate.toISOString().split('T')[0];
+                  const selectedDateEvents = allEvents.filter(event => event.date === selectedDateString);
+                  
+                  // Get upcoming events (future dates from selected date)
+                  const upcomingEvents = allEvents.filter(event => event.date > selectedDateString).slice(0, 5);
+                  
+                  const isToday = selectedDate.toDateString() === new Date().toDateString();
+                  
+                  return (
+                    <>
+                      {/* Selected Date Events */}
+                      <Card>
+                        <CardContent className="p-6">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {isToday ? "Today's Events" : "Events"}
+                            </h3>
+                            <span className="text-sm text-gray-500">
+                              {selectedDate.toLocaleDateString('en-US', { 
+                                weekday: 'long', 
+                                year: 'numeric', 
+                                month: 'long', 
+                                day: 'numeric' 
+                              })}
+                            </span>
                           </div>
-                          <p className="text-sm text-gray-600 mt-1">2:00 PM - 3:00 PM</p>
-                          <div className="flex items-center mt-2">
-                            <Users className="w-4 h-4 text-gray-400 mr-1" />
-                            <span className="text-xs text-gray-500">Alice Johnson, Bob Wilson</span>
+                          
+                          <div className="space-y-3">
+                            {selectedDateEvents.length === 0 ? (
+                              <div className="text-center py-8 text-gray-500">
+                                <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                                <p>No events scheduled for this date</p>
+                                <Button
+                                  onClick={() => setActiveSection('create-meeting')}
+                                  variant="outline"
+                                  size="sm"
+                                  className="mt-3"
+                                >
+                                  <Plus className="w-4 h-4 mr-2" />
+                                  Schedule Meeting
+                                </Button>
+                              </div>
+                            ) : (
+                              selectedDateEvents.map((event) => (
+                                <div key={event.id} className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
+                                  <div className={`w-3 h-12 rounded-full ${event.source === 'google' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
+                                  <div className="flex-1">
+                                    <div className="flex items-center justify-between">
+                                      <h4 className="font-medium text-gray-900">{event.title}</h4>
+                                      <div className="flex items-center space-x-2">
+                                        <Badge variant="outline" className="text-xs">
+                                          {event.source === 'google' ? 'Google' : 'Outlook'}
+                                        </Badge>
+                                        {isToday && (
+                                          <Button variant="ghost" size="sm" className="h-8">
+                                            <Video className="w-4 h-4 mr-1" />
+                                            Join
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <p className="text-sm text-gray-600 mt-1">{event.time}</p>
+                                    <div className="flex items-center mt-2">
+                                      <Users className="w-4 h-4 text-gray-400 mr-1" />
+                                      <span className="text-xs text-gray-500">
+                                        {event.attendees.join(', ')}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))
+                            )}
                           </div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                        </CardContent>
+                      </Card>
 
-                {/* Upcoming Events */}
-                <Card>
-                  <CardContent className="p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Events</h3>
-                    
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
-                        <div className="w-3 h-12 rounded-full bg-red-500"></div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-gray-900">Project Planning</h4>
-                            <div className="flex items-center space-x-2">
-                              <Badge variant="outline" className="text-xs">Google</Badge>
-                              <span className="text-xs text-gray-500">Jan 25</span>
+                      {/* Upcoming Events */}
+                      {!isToday && upcomingEvents.length > 0 && (
+                        <Card>
+                          <CardContent className="p-6">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Events</h3>
+                            
+                            <div className="space-y-3">
+                              {upcomingEvents.map((event) => (
+                                <div key={event.id} className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
+                                  <div className={`w-3 h-12 rounded-full ${event.source === 'google' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
+                                  <div className="flex-1">
+                                    <div className="flex items-center justify-between">
+                                      <h4 className="font-medium text-gray-900">{event.title}</h4>
+                                      <div className="flex items-center space-x-2">
+                                        <Badge variant="outline" className="text-xs">
+                                          {event.source === 'google' ? 'Google' : 'Outlook'}
+                                        </Badge>
+                                        <span className="text-xs text-gray-500">
+                                          {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <p className="text-sm text-gray-600 mt-1">{event.time}</p>
+                                    <div className="flex items-center mt-2">
+                                      <Users className="w-4 h-4 text-gray-400 mr-1" />
+                                      <span className="text-xs text-gray-500">
+                                        {event.attendees.join(', ')}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                          </div>
-                          <p className="text-sm text-gray-600 mt-1">10:30 AM - 11:30 AM</p>
-                          <div className="flex items-center mt-2">
-                            <Users className="w-4 h-4 text-gray-400 mr-1" />
-                            <span className="text-xs text-gray-500">Team Lead, Product Manager</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
-                        <div className="w-3 h-12 rounded-full bg-blue-500"></div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-gray-900">Design Review</h4>
-                            <div className="flex items-center space-x-2">
-                              <Badge variant="outline" className="text-xs">Outlook</Badge>
-                              <span className="text-xs text-gray-500">Jan 25</span>
-                            </div>
-                          </div>
-                          <p className="text-sm text-gray-600 mt-1">3:00 PM - 4:00 PM</p>
-                          <div className="flex items-center mt-2">
-                            <Users className="w-4 h-4 text-gray-400 mr-1" />
-                            <span className="text-xs text-gray-500">UI Designer, Developer</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </main>
