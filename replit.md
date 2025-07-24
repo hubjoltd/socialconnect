@@ -65,7 +65,7 @@ users: {
 - **Meeting Management**: 
   - Create Meeting: Form to schedule new meetings with date/time/participants
   - Meetings: List of upcoming and past meetings with join/view options
-  - Calendar: Full calendar view with Google/Microsoft integration options
+  - Calendar: Zoom-style layout with compact left calendar, events list on right, and real OAuth integration for Google Calendar and Microsoft Outlook
 - **404 Page**: Standard not found page with navigation back to app
 
 ### UI Component System

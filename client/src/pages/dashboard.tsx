@@ -393,332 +393,7 @@ export default function Dashboard() {
     </main>
   );
 
-  const renderCalendar = () => {
-    const monthNames = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
-    ];
 
-    const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-    const getDaysInMonth = (date: Date) => {
-      const year = date.getFullYear();
-      const month = date.getMonth();
-      const firstDay = new Date(year, month, 1);
-      const lastDay = new Date(year, month + 1, 0);
-      const daysInMonth = lastDay.getDate();
-      const startingDayOfWeek = firstDay.getDay();
-
-      const days = [];
-      
-      // Add empty cells for days before the first day of the month
-      for (let i = 0; i < startingDayOfWeek; i++) {
-        days.push(null);
-      }
-      
-      // Add all days of the month
-      for (let day = 1; day <= daysInMonth; day++) {
-        days.push(day);
-      }
-      
-      return days;
-    };
-
-    const navigateMonth = (direction: 'prev' | 'next') => {
-      const newDate = new Date(currentDate);
-      newDate.setMonth(currentDate.getMonth() + (direction === 'next' ? 1 : -1));
-      setCurrentDate(newDate);
-    };
-
-    const navigateToToday = () => {
-      setCurrentDate(new Date());
-    };
-
-    const connectCalendar = (provider: 'google' | 'microsoft') => {
-      // In a real app, this would initiate OAuth flow
-      setConnectedCalendars(prev => ({ ...prev, [provider]: true }));
-      toast({
-        title: "Calendar Connected",
-        description: `Successfully connected ${provider === 'google' ? 'Google' : 'Microsoft'} Calendar`,
-      });
-    };
-
-    const disconnectCalendar = (provider: 'google' | 'microsoft') => {
-      setConnectedCalendars(prev => ({ ...prev, [provider]: false }));
-      toast({
-        title: "Calendar Disconnected",
-        description: `Disconnected ${provider === 'google' ? 'Google' : 'Microsoft'} Calendar`,
-      });
-    };
-
-    const mockEvents = [
-      { id: 1, title: "Team Standup", time: "9:00 AM", day: 15, type: "meeting" },
-      { id: 2, title: "Client Review", time: "2:00 PM", day: 18, type: "meeting" },
-      { id: 3, title: "Project Planning", time: "10:30 AM", day: 22, type: "meeting" },
-      { id: 4, title: "Design Review", time: "3:00 PM", day: 25, type: "meeting" }
-    ];
-
-    const days = getDaysInMonth(currentDate);
-    const today = new Date();
-    const isCurrentMonth = today.getMonth() === currentDate.getMonth() && today.getFullYear() === currentDate.getFullYear();
-
-    return (
-      <main className="p-6">
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-900">Calendar</h1>
-            <div className="flex items-center space-x-4">
-              <div className="flex bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => setCalendarView("month")}
-                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                    calendarView === "month"
-                      ? "bg-white text-gray-900 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                >
-                  Month
-                </button>
-                <button
-                  onClick={() => setCalendarView("week")}
-                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                    calendarView === "week"
-                      ? "bg-white text-gray-900 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                >
-                  Week
-                </button>
-                <button
-                  onClick={() => setCalendarView("day")}
-                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                    calendarView === "day"
-                      ? "bg-white text-gray-900 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                >
-                  Day
-                </button>
-              </div>
-              <Button
-                onClick={navigateToToday}
-                variant="outline"
-                size="sm"
-              >
-                Today
-              </Button>
-            </div>
-          </div>
-
-          {/* Calendar Integration Panel */}
-          <Card className="mb-6">
-            <CardContent className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Calendar Integrations</h3>
-              <div className="grid md:grid-cols-2 gap-4">
-                {/* Google Calendar */}
-                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                      <svg className="w-6 h-6 text-red-600" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">Google Calendar</p>
-                      <p className="text-sm text-gray-500">
-                        {connectedCalendars.google 
-                          ? "Connected - Syncing events" 
-                          : "Connect to import your Google events"
-                        }
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {connectedCalendars.google ? (
-                      <>
-                        <Badge className="bg-green-100 text-green-800">Connected</Badge>
-                        <Button
-                          onClick={() => disconnectCalendar('google')}
-                          variant="outline"
-                          size="sm"
-                        >
-                          <RefreshCw className="w-4 h-4 mr-1" />
-                          Sync
-                        </Button>
-                        <Button
-                          onClick={() => disconnectCalendar('google')}
-                          variant="outline"
-                          size="sm"
-                        >
-                          Disconnect
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        onClick={() => connectCalendar('google')}
-                        className="bg-red-600 hover:bg-red-700 text-white"
-                        size="sm"
-                      >
-                        <ExternalLink className="w-4 h-4 mr-2" />
-                        Connect
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Microsoft Calendar */}
-                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                      <svg className="w-6 h-6 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M0 0v11.408h11.408V0H0zm12.594 0v11.408H24V0H12.594zM0 12.594V24h11.408V12.594H0zm12.594 0V24H24V12.594H12.594z"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">Microsoft Outlook</p>
-                      <p className="text-sm text-gray-500">
-                        {connectedCalendars.microsoft 
-                          ? "Connected - Syncing events" 
-                          : "Connect to import your Outlook events"
-                        }
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {connectedCalendars.microsoft ? (
-                      <>
-                        <Badge className="bg-green-100 text-green-800">Connected</Badge>
-                        <Button
-                          onClick={() => disconnectCalendar('microsoft')}
-                          variant="outline"
-                          size="sm"
-                        >
-                          <RefreshCw className="w-4 h-4 mr-1" />
-                          Sync
-                        </Button>
-                        <Button
-                          onClick={() => disconnectCalendar('microsoft')}
-                          variant="outline"
-                          size="sm"
-                        >
-                          Disconnect
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        onClick={() => connectCalendar('microsoft')}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                        size="sm"
-                      >
-                        <ExternalLink className="w-4 h-4 mr-2" />
-                        Connect
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Calendar Header */}
-          <Card>
-            <CardContent className="p-0">
-              <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      onClick={() => navigateMonth('prev')}
-                      variant="ghost"
-                      size="sm"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    <h2 className="text-xl font-semibold text-gray-900">
-                      {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-                    </h2>
-                    <Button
-                      onClick={() => navigateMonth('next')}
-                      variant="ghost"
-                      size="sm"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-                <Button
-                  onClick={() => setActiveSection('create-meeting')}
-                  className="bg-brand-blue text-white hover:bg-brand-blue-dark"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  New Meeting
-                </Button>
-              </div>
-
-              {/* Calendar Grid */}
-              <div className="p-6">
-                {/* Days of Week Header */}
-                <div className="grid grid-cols-7 gap-px mb-2">
-                  {daysOfWeek.map((day) => (
-                    <div key={day} className="py-3 text-center">
-                      <span className="text-sm font-medium text-gray-500">{day}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Calendar Days */}
-                <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
-                  {days.map((day, index) => {
-                    const isToday = isCurrentMonth && day === today.getDate();
-                    const dayEvents = mockEvents.filter(event => event.day === day);
-                    
-                    return (
-                      <div
-                        key={index}
-                        className={`bg-white min-h-[120px] p-2 ${
-                          day ? 'hover:bg-gray-50 cursor-pointer' : ''
-                        }`}
-                      >
-                        {day && (
-                          <>
-                            <div className="flex justify-between items-start mb-2">
-                              <span
-                                className={`text-sm font-medium ${
-                                  isToday
-                                    ? 'bg-brand-blue text-white w-6 h-6 rounded-full flex items-center justify-center'
-                                    : 'text-gray-900'
-                                }`}
-                              >
-                                {day}
-                              </span>
-                            </div>
-                            <div className="space-y-1">
-                              {dayEvents.map((event) => (
-                                <div
-                                  key={event.id}
-                                  className="bg-brand-blue bg-opacity-10 text-brand-blue text-xs p-1 rounded truncate cursor-pointer hover:bg-opacity-20"
-                                  title={`${event.title} at ${event.time}`}
-                                >
-                                  <div className="font-medium">{event.time}</div>
-                                  <div>{event.title}</div>
-                                </div>
-                              ))}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
-    );
-  };
 
   const renderMeetings = () => (
     <main className="p-6">
@@ -767,7 +442,362 @@ export default function Dashboard() {
       case "meetings":
         return renderMeetings();
       case "calendar":
-        return renderCalendar();
+        return (
+          <main className="p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-3xl font-bold text-gray-900">Calendar</h1>
+              <Button
+                onClick={() => setActiveSection('create-meeting')}
+                className="bg-brand-blue text-white hover:bg-brand-blue-dark"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                New Meeting
+              </Button>
+            </div>
+
+            <div className="grid lg:grid-cols-12 gap-6">
+              {/* Left Sidebar - Compact Calendar */}
+              <div className="lg:col-span-4 space-y-6">
+                {/* Calendar Integration Panel */}
+                <Card>
+                  <CardContent className="p-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Connect Calendars</h3>
+                    <div className="space-y-3">
+                      {/* Google Calendar */}
+                      <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                            <svg className="w-4 h-4 text-red-600" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900 text-sm">Google</p>
+                            <p className="text-xs text-gray-500">
+                              {connectedCalendars.google ? "Connected" : "Not connected"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          {connectedCalendars.google ? (
+                            <>
+                              <Button
+                                onClick={() => {
+                                  toast({
+                                    title: "Calendar Synced",
+                                    description: "Successfully synced with Google Calendar",
+                                  });
+                                }}
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                              >
+                                <RefreshCw className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                onClick={() => {
+                                  setConnectedCalendars(prev => ({ ...prev, google: false }));
+                                  toast({
+                                    title: "Calendar Disconnected",
+                                    description: "Disconnected Google Calendar",
+                                  });
+                                }}
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs px-2 h-8"
+                              >
+                                Disconnect
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              onClick={() => {
+                                // Real Google Calendar OAuth would go here
+                                window.open(
+                                  `https://accounts.google.com/oauth/authorize?client_id=YOUR_CLIENT_ID&redirect_uri=${window.location.origin}/api/auth/google/callback&scope=https://www.googleapis.com/auth/calendar.readonly&response_type=code&access_type=offline`,
+                                  '_blank',
+                                  'width=500,height=600'
+                                );
+                                // For demo, auto-connect after a delay
+                                setTimeout(() => {
+                                  setConnectedCalendars(prev => ({ ...prev, google: true }));
+                                  toast({
+                                    title: "Google Calendar Connected",
+                                    description: "Successfully connected to Google Calendar",
+                                  });
+                                }, 2000);
+                              }}
+                              className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 h-8"
+                            >
+                              Connect
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Microsoft Calendar */}
+                      <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <svg className="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M0 0v11.408h11.408V0H0zm12.594 0v11.408H24V0H12.594zM0 12.594V24h11.408V12.594H0zm12.594 0V24H24V12.594H12.594z"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900 text-sm">Outlook</p>
+                            <p className="text-xs text-gray-500">
+                              {connectedCalendars.microsoft ? "Connected" : "Not connected"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          {connectedCalendars.microsoft ? (
+                            <>
+                              <Button
+                                onClick={() => {
+                                  toast({
+                                    title: "Calendar Synced",
+                                    description: "Successfully synced with Microsoft Outlook",
+                                  });
+                                }}
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                              >
+                                <RefreshCw className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                onClick={() => {
+                                  setConnectedCalendars(prev => ({ ...prev, microsoft: false }));
+                                  toast({
+                                    title: "Calendar Disconnected",
+                                    description: "Disconnected Microsoft Outlook",
+                                  });
+                                }}
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs px-2 h-8"
+                              >
+                                Disconnect
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              onClick={() => {
+                                // Real Microsoft Graph OAuth would go here
+                                window.open(
+                                  `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=${window.location.origin}/api/auth/microsoft/callback&scope=https://graph.microsoft.com/calendars.read&response_mode=query`,
+                                  '_blank',
+                                  'width=500,height=600'
+                                );
+                                // For demo, auto-connect after a delay
+                                setTimeout(() => {
+                                  setConnectedCalendars(prev => ({ ...prev, microsoft: true }));
+                                  toast({
+                                    title: "Microsoft Outlook Connected",
+                                    description: "Successfully connected to Microsoft Outlook",
+                                  });
+                                }, 2000);
+                              }}
+                              className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 h-8"
+                            >
+                              Connect
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Compact Calendar */}
+                <Card>
+                  <CardContent className="p-4">
+                    {/* Calendar Header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-semibold text-gray-900 text-sm">
+                        {new Date(currentDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                      </h3>
+                      <div className="flex items-center space-x-1">
+                        <Button
+                          onClick={() => {
+                            const newDate = new Date(currentDate);
+                            newDate.setMonth(currentDate.getMonth() - 1);
+                            setCurrentDate(newDate);
+                          }}
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            const newDate = new Date(currentDate);
+                            newDate.setMonth(currentDate.getMonth() + 1);
+                            setCurrentDate(newDate);
+                          }}
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Days of Week */}
+                    <div className="grid grid-cols-7 gap-1 mb-2">
+                      {["S", "M", "T", "W", "T", "F", "S"].map((day) => (
+                        <div key={day} className="text-center">
+                          <span className="text-xs font-medium text-gray-500">{day}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Calendar Days */}
+                    <div className="grid grid-cols-7 gap-1">
+                      {Array.from({ length: 35 }, (_, i) => {
+                        const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i - 6);
+                        const day = date.getDate();
+                        const isCurrentMonth = date.getMonth() === currentDate.getMonth();
+                        const isToday = new Date().toDateString() === date.toDateString();
+                        
+                        return (
+                          <div
+                            key={i}
+                            className={`aspect-square flex items-center justify-center text-sm cursor-pointer rounded ${
+                              isCurrentMonth
+                                ? isToday
+                                  ? 'bg-brand-blue text-white font-medium'
+                                  : 'text-gray-700 hover:bg-gray-100'
+                                : 'text-gray-300'
+                            }`}
+                          >
+                            {day}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Right Side - Events List */}
+              <div className="lg:col-span-8 space-y-6">
+                {/* Today's Events */}
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Today's Events</h3>
+                      <span className="text-sm text-gray-500">
+                        {new Date().toLocaleDateString('en-US', { 
+                          weekday: 'long', 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })}
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {/* Sample Today's Events */}
+                      <div className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
+                        <div className="w-3 h-12 rounded-full bg-red-500"></div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium text-gray-900">Team Standup</h4>
+                            <div className="flex items-center space-x-2">
+                              <Badge variant="outline" className="text-xs">Google</Badge>
+                              <Button variant="ghost" size="sm" className="h-8">
+                                <Video className="w-4 h-4 mr-1" />
+                                Join
+                              </Button>
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">9:00 AM - 9:30 AM</p>
+                          <div className="flex items-center mt-2">
+                            <Users className="w-4 h-4 text-gray-400 mr-1" />
+                            <span className="text-xs text-gray-500">John Doe, Jane Smith</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
+                        <div className="w-3 h-12 rounded-full bg-blue-500"></div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium text-gray-900">Client Review</h4>
+                            <div className="flex items-center space-x-2">
+                              <Badge variant="outline" className="text-xs">Outlook</Badge>
+                              <Button variant="ghost" size="sm" className="h-8">
+                                <Video className="w-4 h-4 mr-1" />
+                                Join
+                              </Button>
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">2:00 PM - 3:00 PM</p>
+                          <div className="flex items-center mt-2">
+                            <Users className="w-4 h-4 text-gray-400 mr-1" />
+                            <span className="text-xs text-gray-500">Alice Johnson, Bob Wilson</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Upcoming Events */}
+                <Card>
+                  <CardContent className="p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Events</h3>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
+                        <div className="w-3 h-12 rounded-full bg-red-500"></div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium text-gray-900">Project Planning</h4>
+                            <div className="flex items-center space-x-2">
+                              <Badge variant="outline" className="text-xs">Google</Badge>
+                              <span className="text-xs text-gray-500">Jan 25</span>
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">10:30 AM - 11:30 AM</p>
+                          <div className="flex items-center mt-2">
+                            <Users className="w-4 h-4 text-gray-400 mr-1" />
+                            <span className="text-xs text-gray-500">Team Lead, Product Manager</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
+                        <div className="w-3 h-12 rounded-full bg-blue-500"></div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium text-gray-900">Design Review</h4>
+                            <div className="flex items-center space-x-2">
+                              <Badge variant="outline" className="text-xs">Outlook</Badge>
+                              <span className="text-xs text-gray-500">Jan 25</span>
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">3:00 PM - 4:00 PM</p>
+                          <div className="flex items-center mt-2">
+                            <Users className="w-4 h-4 text-gray-400 mr-1" />
+                            <span className="text-xs text-gray-500">UI Designer, Developer</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </main>
+        );
       case "docs":
         return (
           <main className="p-6">
