@@ -62,6 +62,10 @@ users: {
 ### Frontend Pages
 - **Landing Page**: Unauthenticated users see marketing content and login options
 - **Dashboard**: Authenticated users see personalized dashboard with stats and activities
+- **Meeting Management**: 
+  - Create Meeting: Form to schedule new meetings with date/time/participants
+  - Meetings: List of upcoming and past meetings with join/view options
+  - Calendar: Full calendar view with Google/Microsoft integration options
 - **404 Page**: Standard not found page with navigation back to app
 
 ### UI Component System
