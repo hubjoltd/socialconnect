@@ -170,18 +170,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCalendarEvents(userId: string, startDate?: Date, endDate?: Date): Promise<CalendarEvent[]> {
-    let query = db.select().from(calendarEvents).where(eq(calendarEvents.userId, userId));
-    
-    if (startDate && endDate) {
-      query = query.where(
-        and(
-          eq(calendarEvents.userId, userId),
-          // Add date range filtering when needed
-        )
-      );
-    }
-    
-    return await query.orderBy(asc(calendarEvents.startTime));
+    return await db
+      .select()
+      .from(calendarEvents)
+      .where(eq(calendarEvents.userId, userId))
+      .orderBy(asc(calendarEvents.startTime));
   }
 
   async updateCalendarEvent(id: string, event: Partial<InsertCalendarEvent>): Promise<CalendarEvent> {

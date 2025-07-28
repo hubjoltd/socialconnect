@@ -74,10 +74,8 @@ export default function CreateMeeting() {
 
   const createMeetingMutation = useMutation({
     mutationFn: async (data: MeetingFormData & { participants: string[] }) => {
-      return await apiRequest(`/api/meetings`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      const response = await apiRequest("POST", "/api/meetings", data);
+      return response.json();
     },
     onSuccess: () => {
       toast({

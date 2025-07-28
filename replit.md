@@ -64,8 +64,11 @@ users: {
 - **Dashboard**: Authenticated users see personalized dashboard with stats and activities
 - **Meeting Management**: 
   - Create Meeting: Form to schedule new meetings with date/time/participants
-  - Meetings: List of upcoming and past meetings with join/view options
+  - Meetings: Enhanced tabbed view with upcoming/past meetings, search functionality, and meeting history display
   - Calendar: Zoom-style layout with compact left calendar, events list on right, and real OAuth integration for Google Calendar and Microsoft Outlook
+- **Team Chat**: Mattermost-style interface with channels sidebar, real-time messaging, call/video call buttons, presence indicators, and file sharing capabilities
+- **Contacts**: Zoom-like contact management with favorites, recent contacts, status indicators, and direct communication options (video call, audio call, message)
+- **Social Media**: Auto-login integration connecting to https://meeting.essentiatechs.com/socialmedia/
 - **404 Page**: Standard not found page with navigation back to app
 
 ### UI Component System

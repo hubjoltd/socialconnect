@@ -12,6 +12,7 @@ import Meetings from "@/pages/meetings";
 import Contacts from "@/pages/contacts";
 import Chat from "@/pages/chat";
 import Calendar from "@/pages/calendar";
+import SocialMedia from "@/pages/socialmedia";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -28,6 +29,7 @@ function Router() {
           <Route path="/contacts" component={Contacts} />
           <Route path="/chat" component={Chat} />
           <Route path="/calendar" component={Calendar} />
+          <Route path="/socialmedia" component={SocialMedia} />
         </>
       )}
       <Route component={NotFound} />

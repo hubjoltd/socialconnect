@@ -1,477 +1,685 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { z } from "zod";
-import { Link } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import ModernSidebar from "@/components/ModernSidebar";
 import { 
   Users,
-  Plus,
   Search,
+  Plus,
   Mail,
   Phone,
-  Building,
-  UserPlus,
-  MoreVertical,
-  Check,
-  X,
-  ArrowLeft,
   Video,
-  MessageSquare
+  MessageSquare,
+  UserPlus,
+  Filter,
+  Download,
+  Upload,
+  MoreVertical,
+  Edit,
+  Trash2,
+  Star,
+  Calendar,
+  Globe,
+  Building,
+  MapPin,
+  Clock
 } from "lucide-react";
-
-const contactSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("Valid email is required"),
-  phone: z.string().optional(),
-  company: z.string().optional(),
-  inviteMessage: z.string().optional(),
-  sendInvite: z.boolean().default(true),
-});
-
-type ContactFormData = z.infer<typeof contactSchema>;
 
 interface Contact {
   id: string;
-  userId: string;
-  contactUserId?: string;
-  email: string;
   name: string;
+  email: string;
   phone?: string;
   company?: string;
-  status: "pending" | "accepted" | "blocked";
-  inviteMessage?: string;
+  title?: string;
+  avatar?: string;
+  status: 'online' | 'away' | 'busy' | 'offline';
+  tags: string[];
+  notes?: string;
+  lastContact: string;
+  location?: string;
+  website?: string;
   createdAt: string;
-  updatedAt: string;
+  isFavorite?: boolean;
 }
 
 export default function Contacts() {
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-
-  const form = useForm<ContactFormData>({
-    resolver: zodResolver(contactSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      phone: "",
-      company: "",
-      inviteMessage: "",
-      sendInvite: true,
-    },
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  
+  const [newContact, setNewContact] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    company: "",
+    title: "",
+    notes: "",
+    website: "",
+    location: ""
   });
 
   const { data: contacts = [], isLoading } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],
+    enabled: isAuthenticated,
   });
 
   const addContactMutation = useMutation({
-    mutationFn: async (data: ContactFormData) => {
-      return await apiRequest(`/api/contacts`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+    mutationFn: async (data: typeof newContact) => {
+      const response = await apiRequest("POST", "/api/contacts", data);
+      return response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      setShowAddDialog(false);
+      setNewContact({
+        name: "",
+        email: "",
+        phone: "",
+        company: "",
+        title: "",
+        notes: "",
+        website: "",
+        location: ""
+      });
       toast({
         title: "Success",
-        description: "Contact added successfully! Invitation sent.",
+        description: "Contact added successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-      form.reset();
-      setIsAddDialogOpen(false);
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "Failed to add contact. Please try again.",
+        description: "Failed to add contact",
         variant: "destructive",
       });
     },
   });
 
-  const updateContactStatusMutation = useMutation({
-    mutationFn: async ({ contactId, status }: { contactId: string; status: string }) => {
-      return await apiRequest(`/api/contacts/${contactId}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ status }),
-      });
+  const updateContactMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Contact> }) => {
+      const response = await apiRequest("PATCH", `/api/contacts/${id}`, data);
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      toast({
+        title: "Success",
+        description: "Contact updated successfully",
+      });
     },
   });
 
-  const filteredContacts = contacts.filter(contact =>
-    contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contact.company?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const deleteContactMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/contacts/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      toast({
+        title: "Success",
+        description: "Contact deleted successfully",
+      });
+    },
+  });
 
-  const acceptedContacts = filteredContacts.filter(c => c.status === "accepted");
-  const pendingContacts = filteredContacts.filter(c => c.status === "pending");
+  const filteredContacts = contacts.filter(contact => {
+    const matchesSearch = contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         contact.company?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = selectedStatus === "all" || contact.status === selectedStatus;
+    
+    return matchesSearch && matchesStatus;
+  });
 
-  const onSubmit = (data: ContactFormData) => {
-    addContactMutation.mutate(data);
+  const handleAddContact = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newContact.name || !newContact.email) {
+      toast({
+        title: "Error",
+        description: "Name and email are required",
+        variant: "destructive",
+      });
+      return;
+    }
+    addContactMutation.mutate(newContact);
   };
 
-  const updateContactStatus = (contactId: string, status: string) => {
-    updateContactStatusMutation.mutate({ contactId, status });
+  const handleFavoriteToggle = (contactId: string, isFavorite: boolean) => {
+    updateContactMutation.mutate({
+      id: contactId,
+      data: { isFavorite: !isFavorite }
+    });
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusColor = (status: Contact['status']) => {
     switch (status) {
-      case "accepted":
-        return <Badge variant="default" className="bg-green-100 text-green-800">Connected</Badge>;
-      case "pending":
-        return <Badge variant="secondary">Pending</Badge>;
-      case "blocked":
-        return <Badge variant="destructive">Blocked</Badge>;
-      default:
-        return <Badge variant="outline">Unknown</Badge>;
+      case 'online': return 'bg-green-500';
+      case 'away': return 'bg-yellow-500';
+      case 'busy': return 'bg-red-500';
+      default: return 'bg-gray-400';
     }
   };
 
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  const getStatusText = (status: Contact['status']) => {
+    switch (status) {
+      case 'online': return 'Online';
+      case 'away': return 'Away';
+      case 'busy': return 'Busy';
+      default: return 'Offline';
+    }
   };
 
-  if (isLoading) {
+  const startVideoCall = (contact: Contact) => {
+    toast({
+      title: "Video Call Started",
+      description: `Starting video call with ${contact.name}`,
+    });
+  };
+
+  const startAudioCall = (contact: Contact) => {
+    toast({
+      title: "Audio Call Started",
+      description: `Starting audio call with ${contact.name}`,
+    });
+  };
+
+  const sendMessage = (contact: Contact) => {
+    toast({
+      title: "Message",
+      description: `Opening chat with ${contact.name}`,
+    });
+  };
+
+  const scheduleCall = (contact: Contact) => {
+    toast({
+      title: "Schedule Call",
+      description: `Opening calendar to schedule call with ${contact.name}`,
+    });
+  };
+
+  if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="animate-pulse space-y-6">
-            {[1, 2, 3].map((i) => (
-              <Card key={i}>
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
-                    <div className="flex-1">
-                      <div className="h-4 bg-gray-200 rounded w-1/3 mb-2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
+  const favoriteContacts = filteredContacts.filter(c => c.isFavorite);
+  const recentContacts = filteredContacts.sort((a, b) => 
+    new Date(b.lastContact).getTime() - new Date(a.lastContact).getTime()
+  ).slice(0, 5);
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-6xl mx-auto px-4">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center mb-4">
-            <Link href="/">
-              <Button variant="ghost" size="sm" className="mr-4">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
-              </Button>
-            </Link>
+    <div className="min-h-screen bg-gray-50 flex">
+      <ModernSidebar />
+      
+      <div className="flex-1 p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2" data-testid="contacts-title">
+                  Contacts
+                </h1>
+                <p className="text-gray-600">Manage your professional network and team connections</p>
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <Button variant="outline" data-testid="import-contacts">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import
+                </Button>
+                <Button variant="outline" data-testid="export-contacts">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+                
+                <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-blue-600 hover:bg-blue-700" data-testid="add-contact-button">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Contact
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Add New Contact</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleAddContact} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="name">Name *</Label>
+                          <Input
+                            id="name"
+                            value={newContact.name}
+                            onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
+                            placeholder="John Doe"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="email">Email *</Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            value={newContact.email}
+                            onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
+                            placeholder="john@example.com"
+                            required
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="phone">Phone</Label>
+                          <Input
+                            id="phone"
+                            value={newContact.phone}
+                            onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
+                            placeholder="+1 (555) 123-4567"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="company">Company</Label>
+                          <Input
+                            id="company"
+                            value={newContact.company}
+                            onChange={(e) => setNewContact({ ...newContact, company: e.target.value })}
+                            placeholder="Acme Corp"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="title">Job Title</Label>
+                          <Input
+                            id="title"
+                            value={newContact.title}
+                            onChange={(e) => setNewContact({ ...newContact, title: e.target.value })}
+                            placeholder="Software Engineer"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="location">Location</Label>
+                          <Input
+                            id="location"
+                            value={newContact.location}
+                            onChange={(e) => setNewContact({ ...newContact, location: e.target.value })}
+                            placeholder="San Francisco, CA"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="website">Website</Label>
+                        <Input
+                          id="website"
+                          value={newContact.website}
+                          onChange={(e) => setNewContact({ ...newContact, website: e.target.value })}
+                          placeholder="https://example.com"
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="notes">Notes</Label>
+                        <Input
+                          id="notes"
+                          value={newContact.notes}
+                          onChange={(e) => setNewContact({ ...newContact, notes: e.target.value })}
+                          placeholder="Additional notes..."
+                        />
+                      </div>
+                      
+                      <div className="flex justify-end space-x-3 pt-4">
+                        <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)}>
+                          Cancel
+                        </Button>
+                        <Button type="submit" disabled={addContactMutation.isPending}>
+                          {addContactMutation.isPending ? "Adding..." : "Add Contact"}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
           </div>
 
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Contacts</h1>
-              <p className="text-gray-600">Manage your professional connections</p>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          {/* Search and Filter */}
+          <div className="mb-6">
+            <div className="flex items-center space-x-4">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   placeholder="Search contacts..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-64"
+                  className="pl-10"
+                  data-testid="search-contacts"
                 />
               </div>
-
-              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Contact
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Add New Contact</DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <div>
-                      <Label htmlFor="name">Name *</Label>
-                      <Input
-                        id="name"
-                        placeholder="Enter contact name"
-                        {...form.register("name")}
-                      />
-                      {form.formState.errors.name && (
-                        <p className="text-sm text-red-600 mt-1">{form.formState.errors.name.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label htmlFor="email">Email *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="Enter email address"
-                        {...form.register("email")}
-                      />
-                      {form.formState.errors.email && (
-                        <p className="text-sm text-red-600 mt-1">{form.formState.errors.email.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label htmlFor="phone">Phone</Label>
-                      <Input
-                        id="phone"
-                        placeholder="Enter phone number"
-                        {...form.register("phone")}
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="company">Company</Label>
-                      <Input
-                        id="company"
-                        placeholder="Enter company name"
-                        {...form.register("company")}
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="inviteMessage">Personal Message</Label>
-                      <Textarea
-                        id="inviteMessage"
-                        placeholder="Add a personal message to your invitation"
-                        rows={3}
-                        {...form.register("inviteMessage")}
-                      />
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setIsAddDialogOpen(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button type="submit" disabled={addContactMutation.isPending}>
-                        {addContactMutation.isPending ? "Adding..." : "Send Invitation"}
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
+              
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="online">Online</SelectItem>
+                  <SelectItem value="away">Away</SelectItem>
+                  <SelectItem value="busy">Busy</SelectItem>
+                  <SelectItem value="offline">Offline</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <Users className="h-4 w-4" />
+                <span>{filteredContacts.length} contacts</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Contact Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Contacts</p>
-                  <p className="text-2xl font-bold text-gray-900">{contacts.length}</p>
-                </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <Users className="text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Connected</p>
-                  <p className="text-2xl font-bold text-gray-900">{acceptedContacts.length}</p>
-                </div>
-                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                  <Check className="text-green-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Pending</p>
-                  <p className="text-2xl font-bold text-gray-900">{pendingContacts.length}</p>
-                </div>
-                <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
-                  <UserPlus className="text-yellow-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Pending Invitations */}
-        {pendingContacts.length > 0 && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <UserPlus className="w-5 h-5 mr-2" />
-                Pending Invitations ({pendingContacts.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {pendingContacts.map((contact) => (
-                  <div key={contact.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                    <div className="flex items-center space-x-3">
-                      <Avatar>
-                        <AvatarFallback className="bg-yellow-100 text-yellow-800">
-                          {getInitials(contact.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium text-gray-900">{contact.name}</p>
-                        <p className="text-sm text-gray-600">{contact.email}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">Invitation Sent</Badge>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => updateContactStatus(contact.id, "accepted")}
-                      >
-                        Mark Connected
-                      </Button>
-                    </div>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Contacts</p>
+                    <p className="text-2xl font-bold text-gray-900">{contacts.length}</p>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                  <div className="p-3 bg-blue-100 rounded-full">
+                    <Users className="h-6 w-6 text-blue-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* Connected Contacts */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Users className="w-5 h-5 mr-2" />
-              Connected Contacts ({acceptedContacts.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {acceptedContacts.length === 0 ? (
-              <div className="text-center py-12">
-                <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No contacts yet</h3>
-                <p className="text-gray-500 mb-6">Start building your professional network</p>
-                <Button onClick={() => setIsAddDialogOpen(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Your First Contact
-                </Button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {acceptedContacts.map((contact) => (
-                  <Card key={contact.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center space-x-3">
-                          <Avatar>
-                            <AvatarFallback className="bg-blue-100 text-blue-800">
-                              {getInitials(contact.name)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <h3 className="font-medium text-gray-900">{contact.name}</h3>
-                            {contact.company && (
-                              <p className="text-sm text-gray-600 flex items-center">
-                                <Building className="w-3 h-3 mr-1" />
-                                {contact.company}
-                              </p>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Favorites</p>
+                    <p className="text-2xl font-bold text-gray-900">{favoriteContacts.length}</p>
+                  </div>
+                  <div className="p-3 bg-yellow-100 rounded-full">
+                    <Star className="h-6 w-6 text-yellow-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Online Now</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {contacts.filter(c => c.status === 'online').length}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-green-100 rounded-full">
+                    <div className="h-6 w-6 bg-green-500 rounded-full"></div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">This Month</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {contacts.filter(c => new Date(c.createdAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-purple-100 rounded-full">
+                    <Plus className="h-6 w-6 text-purple-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Contacts Grid */}
+          <Tabs defaultValue="all" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 max-w-md">
+              <TabsTrigger value="all">All Contacts</TabsTrigger>
+              <TabsTrigger value="favorites">Favorites</TabsTrigger>
+              <TabsTrigger value="recent">Recent</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="all" className="space-y-4 mt-6">
+              {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <Card key={i} className="animate-pulse">
+                      <CardContent className="p-6">
+                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredContacts.map((contact) => (
+                    <Card key={contact.id} className="hover:shadow-lg transition-shadow" data-testid={`contact-${contact.id}`}>
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="relative">
+                              <Avatar className="h-12 w-12">
+                                <AvatarImage src={contact.avatar} />
+                                <AvatarFallback className="bg-blue-100 text-blue-600">
+                                  {contact.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className={`absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white ${getStatusColor(contact.status)}`}></div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-lg font-semibold text-gray-900 truncate">{contact.name}</h3>
+                              <p className="text-sm text-gray-500">{getStatusText(contact.status)}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center space-x-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleFavoriteToggle(contact.id, contact.isFavorite || false)}
+                              className={contact.isFavorite ? 'text-yellow-500' : 'text-gray-400'}
+                            >
+                              <Star className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="ghost">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 mb-4">
+                          <div className="flex items-center text-sm text-gray-600">
+                            <Mail className="h-4 w-4 mr-2" />
+                            <span className="truncate">{contact.email}</span>
+                          </div>
+                          
+                          {contact.phone && (
+                            <div className="flex items-center text-sm text-gray-600">
+                              <Phone className="h-4 w-4 mr-2" />
+                              <span>{contact.phone}</span>
+                            </div>
+                          )}
+                          
+                          {contact.company && (
+                            <div className="flex items-center text-sm text-gray-600">
+                              <Building className="h-4 w-4 mr-2" />
+                              <span className="truncate">{contact.company}</span>
+                              {contact.title && <span className="text-gray-400 ml-1">• {contact.title}</span>}
+                            </div>
+                          )}
+                          
+                          {contact.location && (
+                            <div className="flex items-center text-sm text-gray-600">
+                              <MapPin className="h-4 w-4 mr-2" />
+                              <span className="truncate">{contact.location}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {contact.tags && contact.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-4">
+                            {contact.tags.slice(0, 3).map((tag, index) => (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                            {contact.tags.length > 3 && (
+                              <Badge variant="secondary" className="text-xs">
+                                +{contact.tags.length - 3}
+                              </Badge>
                             )}
                           </div>
-                        </div>
-
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Mail className="w-4 h-4 mr-2" />
-                              Send Email
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Video className="w-4 h-4 mr-2" />
-                              Start Meeting
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <MessageSquare className="w-4 h-4 mr-2" />
-                              Send Message
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-red-600"
-                              onClick={() => updateContactStatus(contact.id, "blocked")}
-                            >
-                              <X className="w-4 h-4 mr-2" />
-                              Remove Contact
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Mail className="w-3 h-3 mr-2" />
-                          <span className="truncate">{contact.email}</span>
-                        </div>
-                        
-                        {contact.phone && (
-                          <div className="flex items-center text-sm text-gray-600">
-                            <Phone className="w-3 h-3 mr-2" />
-                            <span>{contact.phone}</span>
-                          </div>
                         )}
-                      </div>
 
-                      <div className="flex items-center justify-between mt-4 pt-3 border-t">
-                        {getStatusBadge(contact.status)}
-                        
-                        <div className="flex gap-1">
-                          <Button size="sm" variant="outline">
-                            <Mail className="w-3 h-3" />
+                        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                          <div className="flex items-center space-x-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => startVideoCall(contact)}
+                              data-testid={`video-call-${contact.id}`}
+                            >
+                              <Video className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => startAudioCall(contact)}
+                              data-testid={`audio-call-${contact.id}`}
+                            >
+                              <Phone className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => sendMessage(contact)}
+                              data-testid={`message-${contact.id}`}
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          
+                          <Button
+                            size="sm"
+                            onClick={() => scheduleCall(contact)}
+                            data-testid={`schedule-${contact.id}`}
+                          >
+                            <Calendar className="h-4 w-4 mr-1" />
+                            Schedule
                           </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="favorites" className="space-y-4 mt-6">
+              {favoriteContacts.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {favoriteContacts.map((contact) => (
+                    <Card key={contact.id} className="hover:shadow-lg transition-shadow border-yellow-200">
+                      <CardContent className="p-6">
+                        <div className="flex items-center space-x-3 mb-4">
+                          <Avatar className="h-12 w-12">
+                            <AvatarImage src={contact.avatar} />
+                            <AvatarFallback className="bg-yellow-100 text-yellow-600">
+                              {contact.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-gray-900">{contact.name}</h3>
+                            <p className="text-sm text-gray-500">{contact.company}</p>
+                          </div>
+                          <Star className="h-5 w-5 text-yellow-500" />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <Badge variant="outline">{getStatusText(contact.status)}</Badge>
+                          <div className="flex items-center space-x-1">
+                            <Button size="sm" variant="outline">
+                              <Video className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="outline">
+                              <Phone className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <Star className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No favorite contacts</h3>
+                    <p className="text-gray-500">Star contacts to add them to your favorites</p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="recent" className="space-y-4 mt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {recentContacts.map((contact) => (
+                  <Card key={contact.id} className="hover:shadow-lg transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="flex items-center space-x-3 mb-4">
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src={contact.avatar} />
+                          <AvatarFallback className="bg-green-100 text-green-600">
+                            {contact.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900">{contact.name}</h3>
+                          <div className="flex items-center text-sm text-gray-500">
+                            <Clock className="h-3 w-3 mr-1" />
+                            <span>{new Date(contact.lastContact).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline">{contact.company}</Badge>
+                        <div className="flex items-center space-x-1">
                           <Button size="sm" variant="outline">
-                            <Video className="w-3 h-3" />
+                            <MessageSquare className="h-4 w-4" />
                           </Button>
-                          <Button size="sm" variant="outline">
-                            <MessageSquare className="w-3 h-3" />
+                          <Button size="sm">
+                            <Calendar className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
@@ -479,9 +687,9 @@ export default function Contacts() {
                   </Card>
                 ))}
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </div>
   );
