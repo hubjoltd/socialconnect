@@ -48,6 +48,7 @@ import {
 interface Channel {
   id: string;
   name: string;
+  displayName?: string;
   description?: string;
   type: 'public' | 'private' | 'direct';
   memberCount: number;
@@ -178,16 +179,7 @@ export default function Chat() {
     });
   };
 
-  const addParticipant = () => {
-    if (newParticipant.trim() && !channelParticipants.includes(newParticipant.trim())) {
-      setChannelParticipants([...channelParticipants, newParticipant.trim()]);
-      setNewParticipant('');
-    }
-  };
 
-  const removeParticipant = (email: string) => {
-    setChannelParticipants(channelParticipants.filter(p => p !== email));
-  };
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -237,6 +229,21 @@ export default function Chat() {
   const [newChannelDescription, setNewChannelDescription] = useState('');
   const [channelParticipants, setChannelParticipants] = useState<string[]>([]);
   const [newParticipant, setNewParticipant] = useState('');
+
+  // Add participant function
+  const addParticipant = () => {
+    if (newParticipant.trim() && !channelParticipants.includes(newParticipant.trim())) {
+      setChannelParticipants([...channelParticipants, newParticipant.trim()]);
+      setNewParticipant('');
+    }
+  };
+
+  // Remove participant function
+  const removeParticipant = (email: string) => {
+    setChannelParticipants(channelParticipants.filter(p => p !== email));
+  };
+
+
 
   if (authLoading) {
     return (
