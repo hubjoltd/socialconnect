@@ -165,25 +165,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const contactData = insertContactSchema.parse({
         ...req.body,
-        userId
+        userId,
+        tags: req.body.tags || [],
+        status: req.body.status || 'offline',
+        createdAt: new Date(),
+        updatedAt: new Date()
       });
       
       const contact = await storage.createContact(contactData);
       
       // Send contact invitation email
       if (user && req.body.sendInvite) {
-        await sendContactInvite(
-          `${user.firstName} ${user.lastName}` || user.email || 'User',
-          user.email || '',
-          contact.email,
-          req.body.inviteMessage
-        );
+        try {
+          await sendContactInvite(
+            `${user.firstName} ${user.lastName}` || user.email || 'User',
+            user.email || '',
+            contact.email,
+            req.body.inviteMessage
+          );
+        } catch (emailError) {
+          console.error("Failed to send invitation email:", emailError);
+          // Don't fail contact creation if email fails
+        }
       }
       
       res.json(contact);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating contact:", error);
-      res.status(500).json({ message: "Failed to create contact" });
+      res.status(500).json({ 
+        message: "Failed to create contact",
+        error: error.message || 'Unknown error',
+        details: error.issues || []
+      });
     }
   });
 
