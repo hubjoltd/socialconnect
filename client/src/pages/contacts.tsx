@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { notifications } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import ModernSidebar from "@/components/ModernSidebar";
 import { 
   Users,
@@ -70,7 +73,16 @@ export default function Contacts() {
     title: "",
     notes: "",
     website: "",
-    location: ""
+    location: "",
+    sendInvite: false,
+    inviteMessage: ""
+  });
+
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [inviteData, setInviteData] = useState({
+    email: "",
+    message: "",
+    contactType: "colleague"
   });
 
   const { data: contacts = [], isLoading } = useQuery<Contact[]>({
@@ -94,8 +106,11 @@ export default function Contacts() {
         title: "",
         notes: "",
         website: "",
-        location: ""
+        location: "",
+        sendInvite: false,
+        inviteMessage: ""
       });
+      notifications.notify('success', 'Contact Added', 'Contact has been successfully added to your network');
       toast({
         title: "Success",
         description: "Contact added successfully",
@@ -120,6 +135,33 @@ export default function Contacts() {
       toast({
         title: "Success",
         description: "Contact updated successfully",
+      });
+    },
+  });
+
+  const inviteContactMutation = useMutation({
+    mutationFn: async (data: typeof inviteData) => {
+      const response = await apiRequest("POST", "/api/contacts/invite", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      setShowInviteDialog(false);
+      setInviteData({
+        email: "",
+        message: "",
+        contactType: "colleague"
+      });
+      notifications.notify('invitation', 'Invitation Sent', 'Contact invitation has been sent successfully');
+      toast({
+        title: "Success",
+        description: "Contact invitation sent successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to send contact invitation",
+        variant: "destructive",
       });
     },
   });
@@ -252,6 +294,74 @@ export default function Contacts() {
                   Export
                 </Button>
                 
+                <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="bg-green-50 border-green-500 text-green-700 hover:bg-green-100">
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Send Invitation
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Invite New Contact</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      inviteContactMutation.mutate(inviteData);
+                    }} className="space-y-4">
+                      <div>
+                        <Label htmlFor="inviteEmail">Email Address *</Label>
+                        <Input
+                          id="inviteEmail"
+                          type="email"
+                          value={inviteData.email}
+                          onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
+                          placeholder="colleague@company.com"
+                          required
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="contactType">Contact Type</Label>
+                        <Select value={inviteData.contactType} onValueChange={(value) => setInviteData({ ...inviteData, contactType: value })}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select contact type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="colleague">Colleague</SelectItem>
+                            <SelectItem value="client">Client</SelectItem>
+                            <SelectItem value="partner">Partner</SelectItem>
+                            <SelectItem value="vendor">Vendor</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="invitePersonalMessage">Personal Message</Label>
+                        <Textarea
+                          id="invitePersonalMessage"
+                          value={inviteData.message}
+                          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInviteData({ ...inviteData, message: e.target.value })}
+                          placeholder="Hi! I'd like to connect with you on our platform. You'll be able to join meetings, chat, and collaborate with our team..."
+                          rows={3}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          They'll receive an email with a secure link to accept your invitation.
+                        </p>
+                      </div>
+                      
+                      <div className="flex justify-end space-x-3 pt-4">
+                        <Button type="button" variant="outline" onClick={() => setShowInviteDialog(false)}>
+                          Cancel
+                        </Button>
+                        <Button type="submit" disabled={inviteContactMutation.isPending} className="bg-green-600 hover:bg-green-700">
+                          {inviteContactMutation.isPending ? "Sending..." : "Send Invitation"}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+
                 <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
                   <DialogTrigger asChild>
                     <Button className="bg-blue-600 hover:bg-blue-700" data-testid="add-contact-button">
@@ -355,7 +465,7 @@ export default function Contacts() {
                           <Checkbox
                             id="sendInvite"
                             checked={newContact.sendInvite}
-                            onCheckedChange={(checked) => 
+                            onCheckedChange={(checked: boolean) => 
                               setNewContact({ ...newContact, sendInvite: checked === true })
                             }
                           />
@@ -370,7 +480,7 @@ export default function Contacts() {
                             <Textarea
                               id="inviteMessage"
                               value={newContact.inviteMessage || ''}
-                              onChange={(e) => setNewContact({ ...newContact, inviteMessage: e.target.value })}
+                              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewContact({ ...newContact, inviteMessage: e.target.value })}
                               placeholder="Hi! I'd like to connect with you on our communication platform. You'll be able to join meetings, chat with our team, and collaborate seamlessly..."
                               rows={3}
                             />

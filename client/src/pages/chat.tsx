@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { notifications } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -89,15 +90,28 @@ export default function Chat() {
   const [isCallActive, setIsCallActive] = useState(false);
   const [callType, setCallType] = useState<'audio' | 'video' | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+
+
+  // Emoji support
+  const commonEmojis = ['😀', '😂', '🙂', '😍', '🤔', '👍', '👎', '❤️', '🎉', '💯', '🔥', '👋', '✅', '❌', '⭐'];
+  
+  const addEmoji = (emoji: string) => {
+    setNewMessage(prev => prev + emoji);
+    setShowEmojiPicker(false);
+  };
 
   const { data: channels = [], isLoading: channelsLoading } = useQuery<Channel[]>({
     queryKey: ["/api/chat/channels"],
     enabled: isAuthenticated,
+    refetchInterval: 10000, // Refresh channels every 10 seconds
   });
 
   const { data: messages = [], isLoading: messagesLoading } = useQuery<Message[]>({
     queryKey: ["/api/chat/messages", selectedChannel],
     enabled: isAuthenticated && !!selectedChannel,
+    refetchInterval: 2000, // Real-time message updates every 2 seconds
   });
 
   const { data: teamMembers = [], isLoading: membersLoading } = useQuery<User[]>({
@@ -113,6 +127,8 @@ export default function Chat() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages", selectedChannel] });
       setNewMessage("");
+      // Play notification sound
+      notifications.playMessageNotification();
     },
     onError: () => {
       toast({
@@ -122,6 +138,8 @@ export default function Chat() {
       });
     },
   });
+
+
 
   const createChannelMutation = useMutation({
     mutationFn: async (data: { name: string; description?: string; type: 'public' | 'private'; participants?: string[] }) => {
@@ -578,15 +596,32 @@ export default function Chat() {
                     >
                       <Paperclip className="h-4 w-4" />
                     </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="text-gray-500 hover:text-gray-700"
-                      data-testid="add-emoji"
-                    >
-                      <Smile className="h-4 w-4" />
-                    </Button>
+                    <div className="relative">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-gray-500 hover:text-gray-700"
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        data-testid="add-emoji"
+                      >
+                        <Smile className="h-4 w-4" />
+                      </Button>
+                      {showEmojiPicker && (
+                        <div className="absolute bottom-full left-0 mb-2 p-2 bg-white border border-gray-200 rounded-lg shadow-lg grid grid-cols-5 gap-2 z-10">
+                          {commonEmojis.map((emoji) => (
+                            <button
+                              key={emoji}
+                              type="button"
+                              onClick={() => addEmoji(emoji)}
+                              className="text-lg hover:bg-gray-100 p-1 rounded"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="flex-1">
@@ -607,9 +642,31 @@ export default function Chat() {
                       />
                       
                       <div className="absolute right-2 bottom-2 flex items-center space-x-1">
-                        <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0">
-                          <Smile className="h-4 w-4" />
-                        </Button>
+                        <div className="relative">
+                          <Button 
+                            type="button" 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-8 w-8 p-0"
+                            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                          >
+                            <Smile className="h-4 w-4" />
+                          </Button>
+                          {showEmojiPicker && (
+                            <div className="absolute bottom-full right-0 mb-2 p-2 bg-white border border-gray-200 rounded-lg shadow-lg grid grid-cols-5 gap-2 z-10">
+                              {commonEmojis.map((emoji) => (
+                                <button
+                                  key={emoji}
+                                  type="button"
+                                  onClick={() => addEmoji(emoji)}
+                                  className="text-lg hover:bg-gray-100 p-1 rounded"
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0">
                           <Paperclip className="h-4 w-4" />
                         </Button>

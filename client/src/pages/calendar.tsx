@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { notifications } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -119,21 +120,110 @@ export default function Calendar() {
     return format(new Date(dateString), 'h:mm a');
   };
 
-  const connectGoogleCalendar = () => {
-    // This would typically redirect to Google OAuth
-    toast({
-      title: "Google Calendar",
-      description: "Google Calendar integration coming soon!",
-    });
+
+
+  // Check for upcoming events and send notifications
+  useEffect(() => {
+    const checkUpcomingEvents = () => {
+      const now = new Date();
+      const in15Minutes = new Date(now.getTime() + 15 * 60 * 1000);
+      
+      events.forEach(event => {
+        const eventStart = new Date(event.startTime);
+        if (eventStart > now && eventStart <= in15Minutes) {
+          notifications.notify('event', 'Upcoming Event', `${event.title} starts in 15 minutes`);
+          toast({
+            title: "Upcoming Event", 
+            description: `${event.title} starts in 15 minutes`,
+          });
+        }
+      });
+    };
+
+    const interval = setInterval(checkUpcomingEvents, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [events, toast]);
+
+  // Real-time calendar integration
+  const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
+  const [isConnectingOutlook, setIsConnectingOutlook] = useState(false);
+
+  const connectGoogleCalendar = async () => {
+    setIsConnectingGoogle(true);
+    try {
+      // Request notification permission
+      if (Notification.permission === 'default') {
+        await Notification.requestPermission();
+      }
+      
+      // Simulate OAuth flow - in real app this would redirect to Google OAuth
+      window.open('https://accounts.google.com/oauth/authorize?client_id=your-client&redirect_uri=your-redirect&scope=https://www.googleapis.com/auth/calendar', '_blank');
+      
+      toast({
+        title: "Google Calendar",
+        description: "Connecting to Google Calendar... Please complete authorization in the new window.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to connect to Google Calendar",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConnectingGoogle(false);
+    }
   };
 
-  const connectOutlookCalendar = () => {
-    // This would typically redirect to Microsoft OAuth
-    toast({
-      title: "Outlook Calendar",
-      description: "Outlook Calendar integration coming soon!",
-    });
+  const connectOutlookCalendar = async () => {
+    setIsConnectingOutlook(true);
+    try {
+      // Request notification permission
+      if (Notification.permission === 'default') {
+        await Notification.requestPermission();
+      }
+      
+      // Simulate OAuth flow - in real app this would redirect to Microsoft OAuth
+      window.open('https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=your-client&redirect_uri=your-redirect&scope=https://graph.microsoft.com/calendars.readwrite', '_blank');
+      
+      toast({
+        title: "Outlook Calendar",
+        description: "Connecting to Outlook Calendar... Please complete authorization in the new window.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error", 
+        description: "Failed to connect to Outlook Calendar",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConnectingOutlook(false);
+    }
   };
+
+  const syncCalendars = async () => {
+    try {
+      const response = await apiRequest('/api/calendar/sync', {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
+        notifications.playSuccessNotification();
+        toast({
+          title: "Success",
+          description: "Calendar sync completed successfully",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to sync calendars",
+        variant: "destructive",
+      });
+    }
+  };
+
+
 
   if (isLoading) {
     return (
@@ -180,21 +270,36 @@ export default function Calendar() {
             <div className="space-y-2">
               <Button 
                 onClick={connectGoogleCalendar}
+                disabled={isConnectingGoogle}
                 variant="outline" 
                 size="sm" 
-                className="w-full justify-start"
+                className="w-full justify-start bg-blue-50 border-blue-200 hover:bg-blue-100"
               >
                 <CalendarIcon className="w-4 h-4 mr-2" />
-                Connect Google Calendar
+                {isConnectingGoogle ? "Connecting..." : "Connect Google Calendar"}
               </Button>
               <Button 
                 onClick={connectOutlookCalendar}
+                disabled={isConnectingOutlook}
                 variant="outline" 
                 size="sm" 
-                className="w-full justify-start"
+                className="w-full justify-start bg-orange-50 border-orange-200 hover:bg-orange-100"
               >
                 <CalendarIcon className="w-4 h-4 mr-2" />
-                Connect Outlook
+                {isConnectingOutlook ? "Connecting..." : "Connect Outlook"}
+              </Button>
+              <Button 
+                onClick={syncCalendars}
+                variant="outline" 
+                size="sm" 
+                className="w-full justify-start bg-green-50 border-green-200 hover:bg-green-100"
+              >
+                <div className="w-4 h-4 mr-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </div>
+                Sync All Calendars
               </Button>
             </div>
           </div>
