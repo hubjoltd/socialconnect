@@ -1,31 +1,25 @@
-import { Link, useLocation } from "wouter";
 import { useState } from "react";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Shield, 
-  Plus,
-  Video,
-  Calendar,
-  FileText,
-  Presentation,
-  Users,
-  MessageSquare,
-  Settings,
-  LogOut,
-  User,
-  Share2,
-  Menu,
-  X
+  Plus, 
+  Video, 
+  Calendar, 
+  FileText, 
+  Presentation, 
+  Users, 
+  MessageSquare, 
+  Share2, 
+  LogOut 
 } from "lucide-react";
 
 interface SidebarItem {
   id: string;
   label: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   color: string;
   href: string;
   badge?: string;
@@ -34,7 +28,6 @@ interface SidebarItem {
 export default function ModernSidebar() {
   const { user } = useAuth() as { user: any };
   const [location] = useLocation();
-  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const sidebarItems: SidebarItem[] = [
     { id: "dashboard", label: "Dashboard", icon: Shield, color: "text-blue-600", href: "/" },
@@ -59,40 +52,21 @@ export default function ModernSidebar() {
   };
 
   return (
-    <div className={`${isCollapsed ? 'w-20' : 'w-72'} bg-white shadow-xl transition-all duration-300 flex flex-col h-screen border-r border-gray-200`}>
-      {/* Header */}
-      <div className="p-6 border-b border-gray-100">
-        <div className="flex items-center justify-between">
-          {!isCollapsed && (
-            <div className="flex items-center space-x-3">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={user?.profileImageUrl} />
-                <AvatarFallback className="bg-blue-100 text-blue-600">
-                  {user?.firstName?.[0]}{user?.lastName?.[0]}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">
-                  {user?.firstName} {user?.lastName}
-                </p>
-                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-              </div>
-            </div>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="h-8 w-8 p-0"
-            data-testid="sidebar-toggle"
-          >
-            {isCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}
-          </Button>
+    <div className="w-20 bg-white shadow-xl flex flex-col h-screen border-r border-gray-200">
+      {/* Header with User Avatar */}
+      <div className="p-4 border-b border-gray-100">
+        <div className="flex justify-center">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={user?.profileImageUrl} />
+            <AvatarFallback className="bg-blue-100 text-blue-600">
+              {user?.firstName?.[0]}{user?.lastName?.[0]}
+            </AvatarFallback>
+          </Avatar>
         </div>
       </div>
 
       {/* Navigation */}
-      <div className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+      <div className="flex-1 py-6 space-y-4 overflow-y-auto">
         {sidebarItems.map((item) => {
           const IconComponent = item.icon;
           const active = isActive(item.href);
@@ -100,52 +74,29 @@ export default function ModernSidebar() {
           return (
             <Link key={item.id} href={item.href}>
               <div
-                className={`group relative flex items-center px-3 py-4 rounded-xl transition-all duration-200 cursor-pointer ${
+                className={`group relative flex flex-col items-center px-2 py-3 mx-2 rounded-xl transition-all duration-200 cursor-pointer ${
                   active
                     ? 'bg-blue-50 border border-blue-200 shadow-sm'
-                    : 'hover:bg-gray-50 hover:shadow-sm'
-                } ${isCollapsed ? 'justify-center' : ''}`}
+                    : 'hover:bg-gray-50 hover:shadow-sm border border-transparent'
+                }`}
                 data-testid={`sidebar-${item.id}`}
               >
-                <div className={`flex items-center ${isCollapsed ? 'flex-col space-y-1' : 'space-x-4'}`}>
-                  <div className={`flex-shrink-0 p-2 rounded-lg ${
-                    active 
-                      ? 'bg-white shadow-sm border border-blue-100' 
-                      : 'bg-gray-100 group-hover:bg-white group-hover:shadow-sm'
-                  }`}>
-                    <IconComponent className={`h-5 w-5 ${active ? item.color : 'text-gray-600'}`} />
-                  </div>
-                  
-                  {!isCollapsed && (
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className={`text-sm font-medium truncate ${
-                          active ? 'text-gray-900' : 'text-gray-700'
-                        }`}>
-                          {item.label}
-                        </p>
-                        {item.badge && (
-                          <Badge 
-                            variant="secondary" 
-                            className="ml-2 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-100 text-red-600 hover:bg-red-100"
-                          >
-                            {item.badge}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {isCollapsed && (
-                    <p className="text-xs font-medium text-gray-600 text-center leading-none">
-                      {item.label.split(' ')[0]}
-                    </p>
-                  )}
+                <div className={`${active ? item.color : 'text-gray-600'} transition-colors mb-1`}>
+                  <IconComponent className="h-6 w-6" />
                 </div>
-
-                {/* Active indicator */}
-                {active && (
-                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-blue-600 rounded-l-full" />
+                
+                <p className={`text-xs font-medium text-center leading-tight transition-colors ${
+                  active ? 'text-blue-900' : 'text-gray-700 group-hover:text-gray-900'
+                }`}>
+                  {item.label}
+                </p>
+                
+                {item.badge && (
+                  <div className="absolute -top-1 -right-1">
+                    <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-medium text-white bg-red-500 rounded-full">
+                      {item.badge}
+                    </span>
+                  </div>
                 )}
               </div>
             </Link>
@@ -153,40 +104,16 @@ export default function ModernSidebar() {
         })}
       </div>
 
-      <Separator className="mx-4" />
-
       {/* Footer */}
-      <div className="p-4 space-y-2">
-        <Link href="/profile">
-          <Button
-            variant="ghost"
-            className={`w-full ${isCollapsed ? 'p-2' : 'justify-start'}`}
-            data-testid="sidebar-profile"
-          >
-            <User className="h-4 w-4" />
-            {!isCollapsed && <span className="ml-2">Profile</span>}
-          </Button>
-        </Link>
-        
-        <Link href="/settings">
-          <Button
-            variant="ghost"
-            className={`w-full ${isCollapsed ? 'p-2' : 'justify-start'}`}
-            data-testid="sidebar-settings"
-          >
-            <Settings className="h-4 w-4" />
-            {!isCollapsed && <span className="ml-2">Settings</span>}
-          </Button>
-        </Link>
-        
-        <Button
-          variant="ghost"
+      <div className="p-4 border-t border-gray-100">
+        <Button 
+          variant="ghost" 
           onClick={handleLogout}
-          className={`w-full text-red-600 hover:text-red-700 hover:bg-red-50 ${isCollapsed ? 'p-2' : 'justify-start'}`}
-          data-testid="sidebar-logout"
+          className="w-full flex flex-col items-center p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+          data-testid="logout-button"
         >
-          <LogOut className="h-4 w-4" />
-          {!isCollapsed && <span className="ml-2">Logout</span>}
+          <LogOut className="h-5 w-5 mb-1" />
+          <span className="text-xs">Sign Out</span>
         </Button>
       </div>
     </div>

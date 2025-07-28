@@ -185,7 +185,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const contacts = await storage.getContacts(userId);
-      res.json(contacts);
+      
+      // Add mock status and additional fields for demo
+      const enhancedContacts = contacts.map(contact => ({
+        ...contact,
+        status: ['online', 'away', 'busy', 'offline'][Math.floor(Math.random() * 4)],
+        tags: ['colleague', 'client', 'partner'].slice(0, Math.floor(Math.random() * 3) + 1),
+        lastContact: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString(),
+        isFavorite: Math.random() > 0.7
+      }));
+      
+      // Add some demo contacts if none exist
+      if (enhancedContacts.length === 0) {
+        const demoContacts = [
+          {
+            id: "demo1",
+            name: "Alice Johnson",
+            email: "alice@company.com",
+            phone: "+1 (555) 123-4567",
+            company: "Tech Solutions Inc",
+            title: "Senior Developer",
+            status: "online",
+            tags: ["colleague", "developer"],
+            lastContact: new Date(Date.now() - 86400000).toISOString(),
+            location: "San Francisco, CA",
+            createdAt: new Date().toISOString(),
+            isFavorite: true
+          },
+          {
+            id: "demo2", 
+            name: "Bob Smith",
+            email: "bob@client.com",
+            phone: "+1 (555) 987-6543",
+            company: "Client Corp",
+            title: "Project Manager",
+            status: "busy",
+            tags: ["client", "manager"],
+            lastContact: new Date(Date.now() - 172800000).toISOString(),
+            location: "New York, NY",
+            createdAt: new Date().toISOString(),
+            isFavorite: false
+          }
+        ];
+        enhancedContacts.push(...demoContacts);
+      }
+      
+      res.json(enhancedContacts);
     } catch (error) {
       console.error("Error fetching contacts:", error);
       res.status(500).json({ message: "Failed to fetch contacts" });
@@ -257,7 +302,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/chat/channels', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const channels = await storage.getChatChannels(userId);
+      // Mock chat channels data for demo
+      const channels = [
+        {
+          id: "general",
+          name: "general",
+          description: "General team discussion",
+          type: "public",
+          memberCount: 12,
+          unreadCount: 0,
+          lastActivity: new Date().toISOString(),
+          createdBy: userId
+        },
+        {
+          id: "development",
+          name: "development",
+          description: "Development team chat",
+          type: "public",
+          memberCount: 8,
+          unreadCount: 2,
+          lastActivity: new Date().toISOString(),
+          createdBy: userId
+        },
+        {
+          id: "announcements",
+          name: "announcements",
+          description: "Company announcements",
+          type: "public",
+          memberCount: 25,
+          unreadCount: 1,
+          lastActivity: new Date().toISOString(),
+          createdBy: userId
+        }
+      ];
       res.json(channels);
     } catch (error) {
       console.error("Error fetching chat channels:", error);
@@ -265,16 +342,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/chat/channels/:channelId/messages', isAuthenticated, async (req: any, res) => {
+  app.get('/api/chat/messages/:channelId', isAuthenticated, async (req: any, res) => {
     try {
       const { channelId } = req.params;
-      const { limit } = req.query;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
       
-      const messages = await storage.getChatMessages(channelId, limit ? parseInt(limit as string) : undefined);
+      // Mock messages data for demo
+      const messages = [
+        {
+          id: "msg1",
+          content: "Welcome to the team chat! 👋",
+          authorId: userId,
+          authorName: `${user.firstName} ${user.lastName}`,
+          authorAvatar: user.profileImageUrl,
+          channelId,
+          timestamp: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+          edited: false
+        },
+        {
+          id: "msg2",
+          content: "Great to have everyone here. Looking forward to collaborating!",
+          authorId: "user2",
+          authorName: "Jane Smith",
+          channelId,
+          timestamp: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+          edited: false,
+          reactions: [
+            { emoji: "👍", count: 3, users: ["user1", "user2", "user3"] }
+          ]
+        }
+      ];
       res.json(messages);
     } catch (error) {
       console.error("Error fetching chat messages:", error);
       res.status(500).json({ message: "Failed to fetch chat messages" });
+    }
+  });
+
+  app.post('/api/chat/messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const { content, channelId } = req.body;
+      
+      const newMessage = {
+        id: uuidv4(),
+        content,
+        authorId: userId,
+        authorName: `${user.firstName} ${user.lastName}`,
+        authorAvatar: user.profileImageUrl,
+        channelId,
+        timestamp: new Date().toISOString(),
+        edited: false
+      };
+      
+      // In a real app, save to database
+      // For now, just return the message
+      res.json(newMessage);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      res.status(500).json({ message: "Failed to send message" });
     }
   });
 
