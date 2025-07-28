@@ -1,13 +1,4 @@
 import {
-  users,
-  meetings,
-  meetingParticipants,
-  contacts,
-  calendarEvents,
-  chatChannels,
-  channelMembers,
-  chatMessages,
-  socialConnections,
   type User,
   type UpsertUser,
   type Meeting,
@@ -25,8 +16,7 @@ import {
   type SocialConnection,
   type InsertSocialConnection,
 } from "@shared/schema";
-import { db } from "./db";
-import { eq, and, desc, asc } from "drizzle-orm";
+import { v4 as uuidv4 } from 'uuid';
 
 // Interface for storage operations
 export interface IStorage {
@@ -71,169 +61,332 @@ export interface IStorage {
   updateSocialConnection(id: string, connection: Partial<InsertSocialConnection>): Promise<SocialConnection>;
 }
 
-export class DatabaseStorage implements IStorage {
+export class MemoryStorage implements IStorage {
+  private users = new Map<string, User>();
+  private meetings = new Map<string, Meeting>();
+  private meetingParticipants = new Map<string, MeetingParticipant[]>();
+  private contacts = new Map<string, Contact[]>();
+  private calendarEvents = new Map<string, CalendarEvent[]>();
+  private chatChannels = new Map<string, ChatChannel>();
+  private chatMessages = new Map<string, ChatMessage[]>();
+  private socialConnections = new Map<string, SocialConnection[]>();
+
   // User operations
   // (IMPORTANT) these user operations are mandatory for Replit Auth.
 
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    return this.users.get(id);
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
+    const now = new Date();
+    const existingUser = this.users.get(userData.id);
+    
+    const user: User = {
+      id: userData.id,
+      email: userData.email || null,
+      firstName: userData.firstName || null,
+      lastName: userData.lastName || null,
+      profileImageUrl: userData.profileImageUrl || null,
+      createdAt: existingUser?.createdAt || now,
+      updatedAt: now,
+    };
+    
+    this.users.set(userData.id, user);
     return user;
   }
 
   // Meeting operations
   async createMeeting(meeting: InsertMeeting): Promise<Meeting> {
-    const [created] = await db.insert(meetings).values(meeting).returning();
+    const now = new Date();
+    const created: Meeting = {
+      id: uuidv4(),
+      title: meeting.title,
+      description: meeting.description || null,
+      startTime: meeting.startTime,
+      endTime: meeting.endTime,
+      timezone: meeting.timezone || "UTC",
+      meetingType: meeting.meetingType || "scheduled",
+      joinLink: meeting.joinLink || null,
+      hostId: meeting.hostId,
+      maxParticipants: meeting.maxParticipants || "100",
+      waitingRoom: meeting.waitingRoom || true,
+      requirePassword: meeting.requirePassword || false,
+      password: meeting.password || null,
+      recordMeeting: meeting.recordMeeting || false,
+      muteOnEntry: meeting.muteOnEntry || true,
+      hostVideo: meeting.hostVideo || true,
+      participantVideo: meeting.participantVideo || false,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.meetings.set(created.id, created);
     return created;
   }
 
   async getMeeting(id: string): Promise<Meeting | undefined> {
-    const [meeting] = await db.select().from(meetings).where(eq(meetings.id, id));
-    return meeting;
+    return this.meetings.get(id);
   }
 
   async getMeetingsByUser(userId: string): Promise<Meeting[]> {
-    return await db.select().from(meetings).where(eq(meetings.hostId, userId)).orderBy(desc(meetings.startTime));
+    return Array.from(this.meetings.values())
+      .filter(meeting => meeting.hostId === userId)
+      .sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
   }
 
   async updateMeeting(id: string, meeting: Partial<InsertMeeting>): Promise<Meeting> {
-    const [updated] = await db
-      .update(meetings)
-      .set({ ...meeting, updatedAt: new Date() })
-      .where(eq(meetings.id, id))
-      .returning();
+    const existing = this.meetings.get(id);
+    if (!existing) {
+      throw new Error('Meeting not found');
+    }
+    const updated: Meeting = {
+      ...existing,
+      ...meeting,
+      updatedAt: new Date(),
+    };
+    this.meetings.set(id, updated);
     return updated;
   }
 
   async deleteMeeting(id: string): Promise<void> {
-    await db.delete(meetings).where(eq(meetings.id, id));
+    this.meetings.delete(id);
+    this.meetingParticipants.delete(id);
   }
 
   // Meeting participant operations
   async addMeetingParticipant(participant: InsertMeetingParticipant): Promise<MeetingParticipant> {
-    const [created] = await db.insert(meetingParticipants).values(participant).returning();
+    const now = new Date();
+    const created: MeetingParticipant = {
+      id: uuidv4(),
+      meetingId: participant.meetingId,
+      email: participant.email,
+      name: participant.name || null,
+      role: participant.role || "participant",
+      inviteStatus: participant.inviteStatus || "pending",
+      joinedAt: participant.joinedAt || null,
+      leftAt: participant.leftAt || null,
+      createdAt: now,
+    };
+    
+    const participants = this.meetingParticipants.get(participant.meetingId) || [];
+    participants.push(created);
+    this.meetingParticipants.set(participant.meetingId, participants);
     return created;
   }
 
   async getMeetingParticipants(meetingId: string): Promise<MeetingParticipant[]> {
-    return await db.select().from(meetingParticipants).where(eq(meetingParticipants.meetingId, meetingId));
+    return this.meetingParticipants.get(meetingId) || [];
   }
 
   async updateParticipantStatus(meetingId: string, email: string, status: string): Promise<void> {
-    await db
-      .update(meetingParticipants)
-      .set({ inviteStatus: status })
-      .where(and(eq(meetingParticipants.meetingId, meetingId), eq(meetingParticipants.email, email)));
+    const participants = this.meetingParticipants.get(meetingId) || [];
+    const participant = participants.find(p => p.email === email);
+    if (participant) {
+      participant.inviteStatus = status;
+    }
   }
 
   // Contact operations
   async createContact(contact: InsertContact): Promise<Contact> {
-    const [created] = await db.insert(contacts).values(contact).returning();
+    const now = new Date();
+    const created: Contact = {
+      id: uuidv4(),
+      userId: contact.userId,
+      contactUserId: contact.contactUserId || null,
+      email: contact.email,
+      name: contact.name,
+      phone: contact.phone || null,
+      company: contact.company || null,
+      title: contact.title || null,
+      location: contact.location || null,
+      status: contact.status || "pending",
+      inviteMessage: contact.inviteMessage || null,
+      inviteToken: contact.inviteToken || null,
+      invitedAt: contact.invitedAt || null,
+      acceptedAt: contact.acceptedAt || null,
+      tags: contact.tags || [],
+      isFavorite: contact.isFavorite || false,
+      lastContact: contact.lastContact || now,
+      createdAt: now,
+      updatedAt: now,
+    };
+    
+    const userContacts = this.contacts.get(contact.userId) || [];
+    userContacts.push(created);
+    this.contacts.set(contact.userId, userContacts);
     return created;
   }
 
   async getContacts(userId: string): Promise<Contact[]> {
-    return await db.select().from(contacts).where(eq(contacts.userId, userId)).orderBy(asc(contacts.name));
+    const contacts = this.contacts.get(userId) || [];
+    return contacts.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async updateContactStatus(contactId: string, status: string): Promise<Contact> {
-    const [updated] = await db
-      .update(contacts)
-      .set({ status, updatedAt: new Date() })
-      .where(eq(contacts.id, contactId))
-      .returning();
-    return updated;
+    for (const [userId, userContacts] of this.contacts.entries()) {
+      const contact = userContacts.find(c => c.id === contactId);
+      if (contact) {
+        contact.status = status;
+        contact.updatedAt = new Date();
+        return contact;
+      }
+    }
+    throw new Error('Contact not found');
   }
 
   async deleteContact(contactId: string): Promise<void> {
-    await db.delete(contacts).where(eq(contacts.id, contactId));
+    for (const [userId, userContacts] of this.contacts.entries()) {
+      const index = userContacts.findIndex(c => c.id === contactId);
+      if (index !== -1) {
+        userContacts.splice(index, 1);
+        return;
+      }
+    }
   }
 
   // Calendar operations
   async createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent> {
-    const [created] = await db.insert(calendarEvents).values(event).returning();
+    const now = new Date();
+    const created: CalendarEvent = {
+      id: uuidv4(),
+      userId: event.userId,
+      title: event.title,
+      description: event.description || null,
+      startTime: event.startTime,
+      endTime: event.endTime,
+      timezone: event.timezone || "UTC",
+      location: event.location || null,
+      eventType: event.eventType || "meeting",
+      googleEventId: event.googleEventId || null,
+      outlookEventId: event.outlookEventId || null,
+      recurrence: event.recurrence || null,
+      attendees: event.attendees || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    
+    const userEvents = this.calendarEvents.get(event.userId) || [];
+    userEvents.push(created);
+    this.calendarEvents.set(event.userId, userEvents);
     return created;
   }
 
   async getCalendarEvents(userId: string, startDate?: Date, endDate?: Date): Promise<CalendarEvent[]> {
-    return await db
-      .select()
-      .from(calendarEvents)
-      .where(eq(calendarEvents.userId, userId))
-      .orderBy(asc(calendarEvents.startTime));
+    const events = this.calendarEvents.get(userId) || [];
+    return events.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
   }
 
   async updateCalendarEvent(id: string, event: Partial<InsertCalendarEvent>): Promise<CalendarEvent> {
-    const [updated] = await db
-      .update(calendarEvents)
-      .set({ ...event, updatedAt: new Date() })
-      .where(eq(calendarEvents.id, id))
-      .returning();
-    return updated;
+    for (const [userId, userEvents] of this.calendarEvents.entries()) {
+      const calendarEvent = userEvents.find(e => e.id === id);
+      if (calendarEvent) {
+        Object.assign(calendarEvent, event, { updatedAt: new Date() });
+        return calendarEvent;
+      }
+    }
+    throw new Error('Calendar event not found');
   }
 
   async deleteCalendarEvent(id: string): Promise<void> {
-    await db.delete(calendarEvents).where(eq(calendarEvents.id, id));
+    for (const [userId, userEvents] of this.calendarEvents.entries()) {
+      const index = userEvents.findIndex(e => e.id === id);
+      if (index !== -1) {
+        userEvents.splice(index, 1);
+        return;
+      }
+    }
   }
 
   // Chat operations
   async createChatChannel(channel: InsertChatChannel): Promise<ChatChannel> {
-    const [created] = await db.insert(chatChannels).values(channel).returning();
+    const now = new Date();
+    const created: ChatChannel = {
+      id: uuidv4(),
+      name: channel.name,
+      displayName: channel.displayName,
+      description: channel.description || null,
+      type: channel.type || "public",
+      createdBy: channel.createdBy,
+      isArchived: channel.isArchived || false,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.chatChannels.set(created.id, created);
     return created;
   }
 
   async getChatChannels(userId: string): Promise<ChatChannel[]> {
-    // This would typically involve a join with channel members table
-    // For now, return channels created by user
-    return await db.select().from(chatChannels).where(eq(chatChannels.createdBy, userId));
+    return Array.from(this.chatChannels.values())
+      .filter(channel => channel.createdBy === userId);
   }
 
   async getChatMessages(channelId: string, limit: number = 50): Promise<ChatMessage[]> {
-    return await db
-      .select()
-      .from(chatMessages)
-      .where(eq(chatMessages.channelId, channelId))
-      .orderBy(desc(chatMessages.createdAt))
-      .limit(limit);
+    const messages = this.chatMessages.get(channelId) || [];
+    return messages
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0))
+      .slice(0, limit);
   }
 
   async sendChatMessage(message: InsertChatMessage): Promise<ChatMessage> {
-    const [created] = await db.insert(chatMessages).values(message).returning();
+    const now = new Date();
+    const created: ChatMessage = {
+      id: uuidv4(),
+      channelId: message.channelId,
+      userId: message.userId,
+      content: message.content,
+      messageType: message.messageType || "text",
+      fileUrl: message.fileUrl || null,
+      fileName: message.fileName || null,
+      fileSize: message.fileSize || null,
+      replyToMessageId: message.replyToMessageId || null,
+      isEdited: message.isEdited || false,
+      isDeleted: message.isDeleted || false,
+      createdAt: now,
+      updatedAt: now,
+    };
+    
+    const channelMessages = this.chatMessages.get(message.channelId) || [];
+    channelMessages.push(created);
+    this.chatMessages.set(message.channelId, channelMessages);
     return created;
   }
 
   // Social connections
   async createSocialConnection(connection: InsertSocialConnection): Promise<SocialConnection> {
-    const [created] = await db.insert(socialConnections).values(connection).returning();
+    const now = new Date();
+    const created: SocialConnection = {
+      id: uuidv4(),
+      userId: connection.userId,
+      platform: connection.platform,
+      platformUserId: connection.platformUserId,
+      accessToken: connection.accessToken || null,
+      refreshToken: connection.refreshToken || null,
+      expiresAt: connection.expiresAt || null,
+      isActive: connection.isActive || true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    
+    const userConnections = this.socialConnections.get(connection.userId) || [];
+    userConnections.push(created);
+    this.socialConnections.set(connection.userId, userConnections);
     return created;
   }
 
   async getSocialConnections(userId: string): Promise<SocialConnection[]> {
-    return await db.select().from(socialConnections).where(eq(socialConnections.userId, userId));
+    return this.socialConnections.get(userId) || [];
   }
 
   async updateSocialConnection(id: string, connection: Partial<InsertSocialConnection>): Promise<SocialConnection> {
-    const [updated] = await db
-      .update(socialConnections)
-      .set({ ...connection, updatedAt: new Date() })
-      .where(eq(socialConnections.id, id))
-      .returning();
-    return updated;
+    for (const [userId, userConnections] of this.socialConnections.entries()) {
+      const socialConnection = userConnections.find(c => c.id === id);
+      if (socialConnection) {
+        Object.assign(socialConnection, connection, { updatedAt: new Date() });
+        return socialConnection;
+      }
+    }
+    throw new Error('Social connection not found');
   }
 }
 
-export const storage = new DatabaseStorage();
+export const storage = new MemoryStorage();
