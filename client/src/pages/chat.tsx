@@ -33,7 +33,10 @@ import {
   Smile,
   Paperclip,
   Calendar,
-  Star
+  Star,
+  PhoneCall,
+  Monitor,
+  Volume2
 } from "lucide-react";
 
 interface Channel {
