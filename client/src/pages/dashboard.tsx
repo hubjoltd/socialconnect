@@ -1066,7 +1066,7 @@ export default function Dashboard() {
                             Send Message
                           </Button>
                           <Button variant="outline">
-                            <Phone className="w-4 h-4 mr-2" />
+                            <Button className="w-4 h-4 mr-2" />
                             Call
                           </Button>
                           <Button variant="outline">
