@@ -210,6 +210,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lastContact: new Date(Date.now() - 86400000).toISOString(),
             location: "San Francisco, CA",
             createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            userId: userId,
+            contactUserId: null,
+            inviteMessage: null,
             isFavorite: true
           },
           {
@@ -224,6 +228,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lastContact: new Date(Date.now() - 172800000).toISOString(),
             location: "New York, NY",
             createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            userId: userId,
+            contactUserId: null,
+            inviteMessage: null,
             isFavorite: false
           }
         ];
@@ -354,8 +362,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: "msg1",
           content: "Welcome to the team chat! 👋",
           authorId: userId,
-          authorName: `${user.firstName} ${user.lastName}`,
-          authorAvatar: user.profileImageUrl,
+          authorName: user ? `${user.firstName} ${user.lastName}` : 'User',
+          authorAvatar: user?.profileImageUrl,
           channelId,
           timestamp: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
           edited: false
@@ -390,8 +398,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id: uuidv4(),
         content,
         authorId: userId,
-        authorName: `${user.firstName} ${user.lastName}`,
-        authorAvatar: user.profileImageUrl,
+        authorName: user ? `${user.firstName} ${user.lastName}` : 'User',
+        authorAvatar: user?.profileImageUrl,
         channelId,
         timestamp: new Date().toISOString(),
         edited: false
