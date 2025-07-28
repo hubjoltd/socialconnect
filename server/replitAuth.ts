@@ -8,8 +8,9 @@ import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
+// Set default REPLIT_DOMAINS if not provided (for development)
 if (!process.env.REPLIT_DOMAINS) {
-  throw new Error("Environment variable REPLIT_DOMAINS not provided");
+  process.env.REPLIT_DOMAINS = `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
 }
 
 const getOidcConfig = memoize(
@@ -31,14 +32,18 @@ export function getSession() {
     ttl: sessionTtl,
     tableName: "sessions",
   });
+  
+  // Use a default secret for development if SESSION_SECRET is not set
+  const sessionSecret = process.env.SESSION_SECRET || 'replit-dev-secret-key-change-in-production';
+  
   return session({
-    secret: process.env.SESSION_SECRET!,
+    secret: sessionSecret,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       maxAge: sessionTtl,
     },
   });
