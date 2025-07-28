@@ -350,6 +350,37 @@ export default function Contacts() {
                         />
                       </div>
                       
+                      <div className="space-y-4">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="sendInvite"
+                            checked={newContact.sendInvite}
+                            onCheckedChange={(checked) => 
+                              setNewContact({ ...newContact, sendInvite: checked === true })
+                            }
+                          />
+                          <Label htmlFor="sendInvite" className="text-sm font-medium">
+                            Send Zoom-like invitation email
+                          </Label>
+                        </div>
+                        
+                        {newContact.sendInvite && (
+                          <div>
+                            <Label htmlFor="inviteMessage">Personal Invitation Message</Label>
+                            <Textarea
+                              id="inviteMessage"
+                              value={newContact.inviteMessage || ''}
+                              onChange={(e) => setNewContact({ ...newContact, inviteMessage: e.target.value })}
+                              placeholder="Hi! I'd like to connect with you on our communication platform. You'll be able to join meetings, chat with our team, and collaborate seamlessly..."
+                              rows={3}
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              They'll receive an email with a secure link to accept your invitation and join the platform.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      
                       <div className="flex justify-end space-x-3 pt-4">
                         <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)}>
                           Cancel

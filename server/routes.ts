@@ -233,6 +233,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             userId: userId,
             contactUserId: null,
             inviteMessage: null,
+            inviteToken: null,
+            invitedAt: null,
+            acceptedAt: null,
             isFavorite: true
           },
           {
@@ -251,6 +254,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             userId: userId,
             contactUserId: null,
             inviteMessage: null,
+            inviteToken: null,
+            invitedAt: null,
+            acceptedAt: null,
             isFavorite: false
           }
         ];
@@ -313,59 +319,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/chat/channels', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const channelData = insertChatChannelSchema.parse({
-        ...req.body,
-        createdBy: userId
-      });
+      const user = await storage.getUser(userId);
       
-      const channel = await storage.createChatChannel(channelData);
-      res.json(channel);
-    } catch (error) {
+      const { name, description, type = 'public', participants = [] } = req.body;
+      
+      const newChannel = {
+        id: uuidv4(),
+        name: name.toLowerCase().replace(/\s+/g, '-'),
+        displayName: name,
+        description,
+        type,
+        createdBy: userId,
+        isArchived: false,
+        memberCount: participants.length + 1, // include creator
+        unreadCount: 0,
+        lastActivity: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Send invitations to participants if provided
+      if (participants.length > 0 && user) {
+        for (const email of participants) {
+          try {
+            // Here you would send invitation emails
+            // For now, we'll just log it
+            console.log(`Sending channel invitation to ${email} for channel ${name}`);
+          } catch (emailError) {
+            console.error(`Failed to send invitation to ${email}:`, emailError);
+          }
+        }
+      }
+      
+      res.json(newChannel);
+    } catch (error: any) {
       console.error("Error creating chat channel:", error);
-      res.status(500).json({ message: "Failed to create chat channel" });
+      res.status(500).json({ 
+        message: "Failed to create chat channel",
+        error: error.message || 'Unknown error'
+      });
     }
   });
 
   app.get('/api/chat/channels', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      // Mock chat channels data for demo
+      // Mock chat channels data for demo with member lists
       const channels = [
         {
           id: "general",
           name: "general",
+          displayName: "General",
           description: "General team discussion",
           type: "public",
           memberCount: 12,
           unreadCount: 0,
           lastActivity: new Date().toISOString(),
-          createdBy: userId
+          createdBy: userId,
+          members: [
+            { id: userId, name: "You", status: "online", role: "admin" },
+            { id: "user2", name: "Alice Johnson", status: "online", role: "member" },
+            { id: "user3", name: "Bob Smith", status: "away", role: "member" },
+            { id: "user4", name: "Carol Davis", status: "busy", role: "member" }
+          ]
         },
         {
           id: "development",
-          name: "development",
+          name: "development", 
+          displayName: "Development",
           description: "Development team chat",
           type: "public",
           memberCount: 8,
           unreadCount: 2,
           lastActivity: new Date().toISOString(),
-          createdBy: userId
+          createdBy: userId,
+          members: [
+            { id: userId, name: "You", status: "online", role: "admin" },
+            { id: "user2", name: "Alice Johnson", status: "online", role: "member" },
+            { id: "user5", name: "David Wilson", status: "offline", role: "member" }
+          ]
         },
         {
           id: "announcements",
           name: "announcements",
+          displayName: "Announcements", 
           description: "Company announcements",
           type: "public",
           memberCount: 25,
           unreadCount: 1,
           lastActivity: new Date().toISOString(),
-          createdBy: userId
+          createdBy: userId,
+          members: [
+            { id: userId, name: "You", status: "online", role: "admin" },
+            { id: "user2", name: "Alice Johnson", status: "online", role: "member" },
+            { id: "user3", name: "Bob Smith", status: "away", role: "member" }
+          ]
         }
       ];
       res.json(channels);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching chat channels:", error);
-      res.status(500).json({ message: "Failed to fetch chat channels" });
+      res.status(500).json({ 
+        message: "Failed to fetch chat channels",
+        error: error.message || 'Unknown error'
+      });
     }
   });
 
@@ -411,7 +468,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      const { content, channelId } = req.body;
+      const { content, channelId, fileUrl, fileType, fileName } = req.body;
       
       const newMessage = {
         id: uuidv4(),
@@ -421,15 +478,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         authorAvatar: user?.profileImageUrl,
         channelId,
         timestamp: new Date().toISOString(),
-        edited: false
+        edited: false,
+        fileUrl: fileUrl || null,
+        fileType: fileType || null,
+        fileName: fileName || null,
+        reactions: []
       };
       
       // In a real app, save to database
       // For now, just return the message
       res.json(newMessage);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error sending message:", error);
-      res.status(500).json({ message: "Failed to send message" });
+      res.status(500).json({ 
+        message: "Failed to send message",
+        error: error.message || 'Unknown error'
+      });
     }
   });
 

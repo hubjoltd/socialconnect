@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import ModernSidebar from "@/components/ModernSidebar";
 import { 
   MessageSquare,
@@ -36,7 +38,10 @@ import {
   Star,
   PhoneCall,
   Monitor,
-  Volume2
+  Volume2,
+  PhoneOff,
+  MoreHorizontal,
+  X
 } from "lucide-react";
 
 interface Channel {
@@ -119,18 +124,52 @@ export default function Chat() {
   });
 
   const createChannelMutation = useMutation({
-    mutationFn: async (data: { name: string; description?: string; type: 'public' | 'private' }) => {
+    mutationFn: async (data: { name: string; description?: string; type: 'public' | 'private'; participants?: string[] }) => {
       const response = await apiRequest("POST", "/api/chat/channels", data);
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/chat/channels"] });
+      setShowCreateChannel(false);
+      setNewChannelName('');
+      setNewChannelDescription('');
+      setChannelParticipants([]);
       toast({
         title: "Success",
-        description: "Channel created successfully",
+        description: "Channel created successfully and invitations sent",
       });
     },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create channel",
+        variant: "destructive",
+      });
+    }
   });
+
+  const handleCreateChannel = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newChannelName.trim()) return;
+    
+    createChannelMutation.mutate({
+      name: newChannelName,
+      description: newChannelDescription,
+      type: 'public',
+      participants: channelParticipants
+    });
+  };
+
+  const addParticipant = () => {
+    if (newParticipant.trim() && !channelParticipants.includes(newParticipant.trim())) {
+      setChannelParticipants([...channelParticipants, newParticipant.trim()]);
+      setNewParticipant('');
+    }
+  };
+
+  const removeParticipant = (email: string) => {
+    setChannelParticipants(channelParticipants.filter(p => p !== email));
+  };
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,6 +212,13 @@ export default function Chat() {
       setSelectedChannel(channels[0].id);
     }
   }, [channels, selectedChannel]);
+
+  // Channel creation states
+  const [showCreateChannel, setShowCreateChannel] = useState(false);
+  const [newChannelName, setNewChannelName] = useState('');
+  const [newChannelDescription, setNewChannelDescription] = useState('');
+  const [channelParticipants, setChannelParticipants] = useState<string[]>([]);
+  const [newParticipant, setNewParticipant] = useState('');
 
   if (authLoading) {
     return (
@@ -230,9 +276,90 @@ export default function Chat() {
             <div className="space-y-2">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Channels</h3>
-                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" data-testid="add-channel">
-                  <Plus className="h-4 w-4" />
-                </Button>
+                <Dialog open={showCreateChannel} onOpenChange={setShowCreateChannel}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0" data-testid="add-channel">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Create New Channel</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleCreateChannel} className="space-y-4">
+                      <div>
+                        <Label htmlFor="channelName">Channel Name *</Label>
+                        <Input
+                          id="channelName"
+                          value={newChannelName}
+                          onChange={(e) => setNewChannelName(e.target.value)}
+                          placeholder="general, development, announcements..."
+                          required
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="channelDescription">Description</Label>
+                        <Textarea
+                          id="channelDescription"
+                          value={newChannelDescription}
+                          onChange={(e) => setNewChannelDescription(e.target.value)}
+                          placeholder="What's this channel about?"
+                          rows={3}
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label>Invite Participants</Label>
+                        <div className="flex space-x-2 mt-1">
+                          <Input
+                            value={newParticipant}
+                            onChange={(e) => setNewParticipant(e.target.value)}
+                            placeholder="email@example.com"
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                addParticipant();
+                              }
+                            }}
+                          />
+                          <Button type="button" onClick={addParticipant} size="sm">
+                            Add
+                          </Button>
+                        </div>
+                        
+                        {channelParticipants.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            <p className="text-sm text-gray-600">Participants to invite:</p>
+                            {channelParticipants.map((email) => (
+                              <div key={email} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded">
+                                <span className="text-sm">{email}</span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeParticipant(email)}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex justify-end space-x-3 pt-4">
+                        <Button type="button" variant="outline" onClick={() => setShowCreateChannel(false)}>
+                          Cancel
+                        </Button>
+                        <Button type="submit" disabled={createChannelMutation.isPending}>
+                          {createChannelMutation.isPending ? "Creating..." : "Create Channel"}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
               </div>
               
               {filteredChannels.map((channel) => (
@@ -328,7 +455,7 @@ export default function Chat() {
                       <Hash className="h-5 w-5 text-blue-600" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{selectedChannelData.name}</h3>
+                      <h3 className="text-lg font-semibold text-gray-900">{selectedChannelData.displayName || selectedChannelData.name}</h3>
                       <p className="text-sm text-gray-500">{selectedChannelData.memberCount} members</p>
                     </div>
                   </div>
@@ -441,6 +568,27 @@ export default function Chat() {
               {/* Message Input */}
               <div className="bg-white border-t border-gray-200 p-4">
                 <form onSubmit={handleSendMessage} className="flex items-end space-x-3">
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-gray-500 hover:text-gray-700"
+                      data-testid="attach-file"
+                    >
+                      <Paperclip className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-gray-500 hover:text-gray-700"
+                      data-testid="add-emoji"
+                    >
+                      <Smile className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
                   <div className="flex-1">
                     <div className="relative">
                       <Textarea

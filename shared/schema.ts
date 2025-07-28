@@ -8,6 +8,7 @@ import {
   boolean,
   uuid,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -80,10 +81,33 @@ export const contacts = pgTable("contacts", {
   name: varchar("name").notNull(),
   phone: varchar("phone"),
   company: varchar("company"),
+  title: varchar("title"),
+  location: varchar("location"),
   status: varchar("status").notNull().default("pending"), // pending, accepted, blocked
   inviteMessage: text("invite_message"),
+  inviteToken: varchar("invite_token").unique(),
+  invitedAt: timestamp("invited_at"),
+  acceptedAt: timestamp("accepted_at"),
+  tags: text("tags").array().default(sql`ARRAY[]::text[]`),
+  isFavorite: boolean("is_favorite").default(false),
+  lastContact: timestamp("last_contact").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Contact invitations table
+export const contactInvitations = pgTable("contact_invitations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  inviterUserId: varchar("inviter_user_id").notNull(),
+  inviterName: varchar("inviter_name").notNull(),
+  inviterEmail: varchar("inviter_email").notNull(),
+  inviteeEmail: varchar("invitee_email").notNull(),
+  inviteMessage: text("invite_message"),
+  inviteToken: varchar("invite_token").notNull().unique(),
+  status: varchar("status").notNull().default("pending"), // pending, accepted, declined, expired
+  expiresAt: timestamp("expires_at").notNull(),
+  acceptedAt: timestamp("accepted_at"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Calendar events table
@@ -123,6 +147,25 @@ export const channelMembers = pgTable("channel_members", {
   id: uuid("id").primaryKey().defaultRandom(),
   channelId: uuid("channel_id").notNull(),
   userId: varchar("user_id").notNull(),
+  role: varchar("role").notNull().default("member"), // admin, member
+  joinedAt: timestamp("joined_at").defaultNow(),
+  inviteStatus: varchar("invite_status").notNull().default("accepted"), // pending, accepted, declined
+  invitedBy: varchar("invited_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Channel invitations table
+export const channelInvitations = pgTable("channel_invitations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  channelId: uuid("channel_id").notNull(),
+  inviterUserId: varchar("inviter_user_id").notNull(),
+  inviteeEmail: varchar("invitee_email").notNull(),
+  inviteMessage: text("invite_message"),
+  inviteToken: varchar("invite_token").notNull().unique(),
+  status: varchar("status").notNull().default("pending"), // pending, accepted, declined, expired
+  expiresAt: timestamp("expires_at").notNull(),
+  acceptedAt: timestamp("accepted_at"),
+  createdAt: timestamp("created_at").defaultNow(),
   role: varchar("role").notNull().default("member"), // admin, moderator, member
   joinedAt: timestamp("joined_at").defaultNow(),
   isNotificationEnabled: boolean("is_notification_enabled").default(true),
@@ -220,6 +263,14 @@ export type InsertMeetingParticipant = z.infer<typeof insertMeetingParticipantSc
 
 export type Contact = typeof contacts.$inferSelect;
 export type InsertContact = z.infer<typeof insertContactSchema>;
+
+export const insertContactInvitationSchema = createInsertSchema(contactInvitations).omit({ id: true, createdAt: true });
+export type InsertContactInvitation = z.infer<typeof insertContactInvitationSchema>;
+export type SelectContactInvitation = typeof contactInvitations.$inferSelect;
+
+export const insertChannelInvitationSchema = createInsertSchema(channelInvitations).omit({ id: true, createdAt: true });
+export type InsertChannelInvitation = z.infer<typeof insertChannelInvitationSchema>;
+export type SelectChannelInvitation = typeof channelInvitations.$inferSelect;
 
 export type ChatChannel = typeof chatChannels.$inferSelect;
 export type InsertChatChannel = z.infer<typeof insertChatChannelSchema>;
