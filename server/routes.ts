@@ -88,6 +88,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const meetingData = insertMeetingSchema.parse({
         ...req.body,
+        startTime: new Date(req.body.startTime),
+        endTime: new Date(req.body.endTime),
         hostId: userId,
         joinLink: `${req.protocol}://${req.get('host')}/meeting/${uuidv4()}`
       });
@@ -119,9 +121,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(meeting);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating meeting:", error);
-      res.status(500).json({ message: "Failed to create meeting" });
+      res.status(500).json({ 
+        message: "Failed to create meeting", 
+        error: error.message || 'Unknown error',
+        details: error.issues || [] 
+      });
     }
   });
 

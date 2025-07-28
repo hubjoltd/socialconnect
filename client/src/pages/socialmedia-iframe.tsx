@@ -3,19 +3,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import ModernSidebar from "@/components/ModernSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { 
-  ExternalLink,
-  Share2,
-  Globe,
-  CheckCircle,
-  AlertCircle,
-  ArrowLeft
-} from "lucide-react";
+import { Share2, ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
 
-export default function SocialMedia() {
+export default function SocialMediaIframe() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
 
@@ -61,13 +53,11 @@ export default function SocialMedia() {
                 </Button>
               </Link>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2" data-testid="social-media-title">
-              Social Media Platform
-            </h1>
-            <p className="text-gray-600">EssentiaTechs social media platform integrated within your app</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Social Media Platform</h1>
+            <p className="text-gray-600">EssentiaTechs social media platform auto-loaded within your app</p>
           </div>
 
-          {/* Integrated Social Media Frame */}
+          {/* Auto-loaded Social Media Frame */}
           <Card className="h-[calc(100vh-200px)]">
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -85,8 +75,6 @@ export default function SocialMedia() {
               />
             </CardContent>
           </Card>
-
-
         </div>
       </div>
     </div>

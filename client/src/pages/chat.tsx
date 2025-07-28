@@ -446,7 +446,7 @@ export default function Chat() {
                       <Textarea
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder={`Message ${selectedChannelData.name}...`}
+                        placeholder={`Message ${selectedChannelData?.name || 'channel'}...`}
                         className="resize-none pr-20"
                         rows={1}
                         data-testid="message-input"
