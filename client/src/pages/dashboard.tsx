@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -52,7 +53,7 @@ interface UserStats {
 export default function Dashboard() {
   const { toast } = useToast();
   const { user, isAuthenticated, isLoading } = useAuth();
-  const [activeSection, setActiveSection] = useState("dashboard");
+  const [location] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -88,14 +89,14 @@ export default function Dashboard() {
   };
 
   const sidebarItems = [
-    { id: "dashboard", label: "Dashboard", icon: Shield, color: "text-blue-600" },
-    { id: "create-meeting", label: "Create a meeting", icon: Plus, color: "text-green-600" },
-    { id: "meetings", label: "Meetings", icon: Video, color: "text-purple-600" },
-    { id: "calendar", label: "Calendar", icon: Calendar, color: "text-orange-600" },
-    { id: "docs", label: "Doc's", icon: FileText, color: "text-blue-500" },
-    { id: "whiteboard", label: "Whiteboard", icon: Presentation, color: "text-pink-600" },
-    { id: "contacts", label: "Contacts", icon: Users, color: "text-indigo-600" },
-    { id: "team-chat", label: "Team chat", icon: MessageSquare, color: "text-cyan-600" }
+    { id: "dashboard", label: "Dashboard", icon: Shield, color: "text-blue-600", href: "/" },
+    { id: "create-meeting", label: "Create a meeting", icon: Plus, color: "text-green-600", href: "/create-meeting" },
+    { id: "meetings", label: "Meetings", icon: Video, color: "text-purple-600", href: "/meetings" },
+    { id: "calendar", label: "Calendar", icon: Calendar, color: "text-orange-600", href: "/calendar" },
+    { id: "docs", label: "Doc's", icon: FileText, color: "text-blue-500", href: "#" },
+    { id: "whiteboard", label: "Whiteboard", icon: Presentation, color: "text-pink-600", href: "#" },
+    { id: "contacts", label: "Contacts", icon: Users, color: "text-indigo-600", href: "/contacts" },
+    { id: "team-chat", label: "Team chat", icon: MessageSquare, color: "text-cyan-600", href: "/chat" }
   ];
 
   const getIconComponent = (iconColor: string) => {
@@ -1138,19 +1139,35 @@ export default function Dashboard() {
           <nav className="flex-1 px-4 py-6 space-y-2">
             {sidebarItems.map((item) => {
               const Icon = item.icon;
+              const isActive = location === item.href;
+              
+              if (item.href === "#") {
+                return (
+                  <button
+                    key={item.id}
+                    disabled
+                    className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors text-gray-400 cursor-not-allowed"
+                  >
+                    <Icon className="text-lg text-gray-400" />
+                    <span className="font-medium">{item.label}</span>
+                    <Badge variant="outline" className="ml-auto text-xs">Soon</Badge>
+                  </button>
+                );
+              }
+              
               return (
-                <button
+                <Link
                   key={item.id}
-                  onClick={() => setActiveSection(item.id)}
+                  href={item.href}
                   className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                    activeSection === item.id
-                      ? 'bg-brand-blue text-white'
+                    isActive
+                      ? 'bg-blue-600 text-white'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
-                  <Icon className={`text-lg ${activeSection === item.id ? 'text-white' : item.color}`} />
+                  <Icon className={`text-lg ${isActive ? 'text-white' : item.color}`} />
                   <span className="font-medium">{item.label}</span>
-                </button>
+                </Link>
               );
             })}
           </nav>
@@ -1216,7 +1233,7 @@ export default function Dashboard() {
 
         {/* Page Content */}
         <div className="flex-1">
-          {renderSectionContent()}
+          {renderDashboardContent()}
         </div>
       </div>
 

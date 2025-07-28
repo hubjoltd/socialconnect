@@ -77,39 +77,13 @@ export const contacts = pgTable("contacts", {
   userId: varchar("user_id").notNull(),
   contactUserId: varchar("contact_user_id"),
   email: varchar("email").notNull(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
-  profileImageUrl: varchar("profile_image_url"),
+  name: varchar("name").notNull(),
+  phone: varchar("phone"),
+  company: varchar("company"),
   status: varchar("status").notNull().default("pending"), // pending, accepted, blocked
   inviteMessage: text("invite_message"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Team chat channels table
-export const chatChannels = pgTable("chat_channels", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: varchar("name").notNull(),
-  description: text("description"),
-  channelType: varchar("channel_type").notNull().default("public"), // public, private, direct
-  createdBy: varchar("created_by").notNull(),
-  members: text("members").array(), // Array of user IDs
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Chat messages table
-export const chatMessages = pgTable("chat_messages", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  channelId: uuid("channel_id").notNull(),
-  userId: varchar("user_id").notNull(),
-  content: text("content").notNull(),
-  messageType: varchar("message_type").notNull().default("text"), // text, file, image, system
-  attachments: jsonb("attachments"), // JSON array of file info
-  replyToId: uuid("reply_to_id"), // For threaded messages
-  editedAt: timestamp("edited_at"),
-  deletedAt: timestamp("deleted_at"),
-  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Calendar events table
@@ -121,13 +95,66 @@ export const calendarEvents = pgTable("calendar_events", {
   startTime: timestamp("start_time").notNull(),
   endTime: timestamp("end_time").notNull(),
   timezone: varchar("timezone").notNull().default("UTC"),
-  isAllDay: boolean("is_all_day").default(false),
   location: varchar("location"),
-  eventType: varchar("event_type").notNull().default("meeting"), // meeting, appointment, reminder
-  googleEventId: varchar("google_event_id"), // For Google Calendar sync
-  outlookEventId: varchar("outlook_event_id"), // For Outlook sync
-  recurrence: jsonb("recurrence"), // Recurrence rules
-  attendees: text("attendees").array(), // Array of email addresses
+  eventType: varchar("event_type").notNull().default("meeting"), // meeting, reminder, task
+  googleEventId: varchar("google_event_id"),
+  outlookEventId: varchar("outlook_event_id"),
+  recurrence: jsonb("recurrence"),
+  attendees: text("attendees").array(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Team chat channels table
+export const chatChannels = pgTable("chat_channels", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name").notNull(),
+  displayName: varchar("display_name").notNull(),
+  description: text("description"),
+  type: varchar("type").notNull().default("public"), // public, private, direct
+  createdBy: varchar("created_by").notNull(),
+  isArchived: boolean("is_archived").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Channel members table
+export const channelMembers = pgTable("channel_members", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  channelId: uuid("channel_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  role: varchar("role").notNull().default("member"), // admin, moderator, member
+  joinedAt: timestamp("joined_at").defaultNow(),
+  isNotificationEnabled: boolean("is_notification_enabled").default(true),
+});
+
+// Chat messages table
+export const chatMessages = pgTable("chat_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  channelId: uuid("channel_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  content: text("content").notNull(),
+  messageType: varchar("message_type").notNull().default("text"), // text, file, image, video, call
+  fileUrl: varchar("file_url"),
+  fileName: varchar("file_name"),
+  fileSize: varchar("file_size"),
+  replyToMessageId: uuid("reply_to_message_id"),
+  isEdited: boolean("is_edited").default(false),
+  isDeleted: boolean("is_deleted").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Social media connections table
+export const socialConnections = pgTable("social_connections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: varchar("user_id").notNull(),
+  platform: varchar("platform").notNull(), // google, microsoft, facebook, linkedin
+  platformUserId: varchar("platform_user_id").notNull(),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  expiresAt: timestamp("expires_at"),
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -174,7 +201,13 @@ export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit
   updatedAt: true,
 });
 
-// Export types
+export const insertSocialConnectionSchema = createInsertSchema(socialConnections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Type exports
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -196,3 +229,6 @@ export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 
 export type CalendarEvent = typeof calendarEvents.$inferSelect;
 export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
+
+export type SocialConnection = typeof socialConnections.$inferSelect;
+export type InsertSocialConnection = z.infer<typeof insertSocialConnectionSchema>;

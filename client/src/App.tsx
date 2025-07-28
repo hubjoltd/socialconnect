@@ -6,7 +6,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
-import Dashboard from "@/pages/dashboard";
+import Dashboard from "@/pages/dashboard-simple";
+import CreateMeeting from "@/pages/create-meeting";
+import Meetings from "@/pages/meetings";
+import Contacts from "@/pages/contacts";
+import Chat from "@/pages/chat";
+import Calendar from "@/pages/calendar";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -18,6 +23,11 @@ function Router() {
       ) : (
         <>
           <Route path="/" component={Dashboard} />
+          <Route path="/create-meeting" component={CreateMeeting} />
+          <Route path="/meetings" component={Meetings} />
+          <Route path="/contacts" component={Contacts} />
+          <Route path="/chat" component={Chat} />
+          <Route path="/calendar" component={Calendar} />
         </>
       )}
       <Route component={NotFound} />
